@@ -92,11 +92,11 @@ namespace Dasik.PathFinder
         public CellType Type;
         public List<Cell> Neighbours;
 
-        public Cell(Vector2 position, CellType type, List<Cell> neighbour)
+        public Cell(Vector2 position, CellType type, List<Cell> neighbours)
         {
             Position = position;
             Type = type;
-            Neighbours = neighbour;
+            Neighbours = neighbours;
         }
 
         public Cell(Vector2 position)

@@ -34,10 +34,20 @@ namespace Dasik.PathFinder
                     currrentCell.Type = CellType.Free;
                     foreach (var hit in hits)
                     {
+                        //if (hit.gameObject.isStatic)
+                        //{
+                        //    var goType = hit.GetComponent<ObstacleType>();
+                        //    currrentCell.Type = goType == null ? CellType.Static : goType.Type;
+                        //    break;
+                        //}
                         if (hit.gameObject.isStatic)
                         {
-                            var goType = hit.GetComponent<ObstacleType>();
-                            currrentCell.Type = goType == null ? CellType.Static : goType.Type;
+                            currrentCell.Type =  CellType.Static;
+                        }
+                        var goType = hit.GetComponent<ObstacleType>();
+                        if (goType != null)
+                        {
+                            currrentCell.Type = goType.Type;
                             break;
                         }
                     }
