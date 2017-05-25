@@ -88,11 +88,11 @@ namespace Dasik.PathFinder
 
     internal class Cell
     {
-        public Vector2 Position;
+        public readonly Vector2 Position;
         public CellType Type;
-        public Cell[] Neighbours;
+        public List<Cell> Neighbours;
 
-        public Cell(Vector2 position, CellType type, Cell[] neighbour)
+        public Cell(Vector2 position, CellType type, List<Cell> neighbour)
         {
             Position = position;
             Type = type;
@@ -102,10 +102,9 @@ namespace Dasik.PathFinder
         public Cell(Vector2 position)
         {
             Position = position;
-            Neighbours = new Cell[8];
         }
 
-        public Cell() { Neighbours = new Cell[8]; }
+        public Cell() {  }
 
         public override bool Equals(object obj)
         {
@@ -117,6 +116,11 @@ namespace Dasik.PathFinder
             if (objCell != null && Math.Abs((this.Position - objCell.Position).sqrMagnitude) < 0.02)
                 return true;
             return false;
+        }
+
+        public override int GetHashCode()
+        {
+            return Position.GetHashCode();
         }
     }
 

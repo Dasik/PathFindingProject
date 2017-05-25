@@ -7,17 +7,21 @@ public class Initializator : MonoBehaviour
     public int AgentsCount = 50;
     public int ObstaclesCount = 50;
     public Map CurrentMap;
+    public AreaRange AgentsArea;
+    public AreaRange ObstaclesArea;
+    public AreaRange ScanArea;
 
     void Start()
     {
-        StartCoroutine(StartInitAgents(new Vector2(50, 50),
-                                            new Vector2(65, 65),
+        StartCoroutine(StartInitAgents(AgentsArea.LeftBottomPoint,
+                                            AgentsArea.RightTopPoint,
                                             AgentsCount));
-        StartCoroutine(StartInitObstacles(new Vector2(-40, -20),
-                                            new Vector2(-10, 20),
+        StartCoroutine(StartInitObstacles(ObstaclesArea.LeftBottomPoint,
+                                            ObstaclesArea.RightTopPoint,
                                             ObstaclesCount));
-        CurrentMap.ScanArea(new Vector2(-100, -50),
-                            new Vector2(0, 50));
+        CurrentMap.ScanArea(ScanArea.LeftBottomPoint,
+                            ScanArea.RightTopPoint,
+                            null);
         //CurrentMap.ScanArea(new Vector2(-10, -10),
         //            new Vector2(0, 0));
     }
@@ -34,5 +38,12 @@ public class Initializator : MonoBehaviour
         while (ObjectGenerator.Instance == null)
             yield return new WaitForEndOfFrame();
         ObjectGenerator.Instance.InitObstacles(leftBottomPoint, rightTopPoint, objectsCount);
+    }
+
+    [System.Serializable]
+    public class AreaRange
+    {
+        public Vector2 LeftBottomPoint;
+        public Vector2 RightTopPoint;
     }
 }

@@ -21,8 +21,8 @@ GameObject:
   - component: {fileID: 4606839144164800}
   - component: {fileID: 212218423885504866}
   - component: {fileID: 114013036310608166}
-  - component: {fileID: 61537386763631320}
   - component: {fileID: 50892952722694944}
+  - component: {fileID: 60978968686836420}
   - component: {fileID: 114222444022736050}
   m_Layer: 0
   m_Name: Obstacle hazard
@@ -64,8 +64,8 @@ Rigidbody2D:
   m_SleepingMode: 1
   m_CollisionDetection: 0
   m_Constraints: 0
---- !u!61 &61537386763631320
-BoxCollider2D:
+--- !u!60 &60978968686836420
+PolygonCollider2D:
   m_ObjectHideFlags: 1
   m_PrefabParentObject: {fileID: 0}
   m_PrefabInternal: {fileID: 100100000}
@@ -76,8 +76,46 @@ BoxCollider2D:
   m_IsTrigger: 0
   m_UsedByEffector: 0
   m_Offset: {x: 0, y: 0}
-  serializedVersion: 2
-  m_Size: {x: 0.6666667, y: 0.6666667}
+  m_Points:
+    m_Paths:
+    - - {x: 0.66999996, y: -0.81}
+      - {x: 0.59, y: -0.7}
+      - {x: 0.51, y: -0.64}
+      - {x: 0.59, y: -0.63}
+      - {x: 0.87, y: -0.55}
+      - {x: 1, y: -0.42}
+      - {x: 1.02, y: -0.31}
+      - {x: 1.15, y: -0.19999999}
+      - {x: 1.15, y: -0.049999997}
+      - {x: 1.0799999, y: 0.02}
+      - {x: 0.84999996, y: 0.12}
+      - {x: 0.59999996, y: 0.21}
+      - {x: 0.45, y: 0.24}
+      - {x: 0.34, y: 0.26}
+      - {x: 0.26999998, y: 0.26999998}
+      - {x: -0.04, y: 0.26999998}
+      - {x: -0.22999999, y: 0.25}
+      - {x: -0.5, y: 0.14999999}
+      - {x: -0.58, y: 0.04}
+      - {x: -0.72999996, y: 0.03}
+      - {x: -0.9, y: 0.02}
+      - {x: -1.11, y: -0.089999996}
+      - {x: -1.11, y: -0.22999999}
+      - {x: -0.98999995, y: -0.31}
+      - {x: -0.76, y: -0.52}
+      - {x: -0.63, y: -0.57}
+      - {x: -0.37, y: -0.59999996}
+      - {x: -0.19999999, y: -0.59}
+      - {x: -0.42999998, y: -0.7}
+      - {x: -0.53, y: -0.81}
+      - {x: -0.5, y: -0.98999995}
+      - {x: -0.41, y: -1.05}
+      - {x: -0.22, y: -1.13}
+      - {x: -0.14999999, y: -1.15}
+      - {x: 0.29999998, y: -1.15}
+      - {x: 0.41, y: -1.12}
+      - {x: 0.59, y: -1.03}
+      - {x: 0.66999996, y: -0.91999996}
 --- !u!114 &114013036310608166
 MonoBehaviour:
   m_ObjectHideFlags: 1
@@ -90,7 +128,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   MinScale: 0.25
-  MaxScale: 5
+  MaxScale: 15
 --- !u!114 &114222444022736050
 MonoBehaviour:
   m_ObjectHideFlags: 1
@@ -134,7 +172,7 @@ SpriteRenderer:
   m_LightmapParameters: {fileID: 0}
   m_SortingLayerID: 0
   m_SortingOrder: 0
-  m_Sprite: {fileID: 21300000, guid: 3ca94575e69a97f47bd2d23724b66524, type: 3}
+  m_Sprite: {fileID: 21300000, guid: 1cfa998283a0673438f045f5f45532e9, type: 3}
   m_Color: {r: 1, g: 1, b: 1, a: 1}
   m_FlipX: 0
   m_FlipY: 0

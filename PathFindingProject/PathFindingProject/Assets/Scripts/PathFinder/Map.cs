@@ -1,14 +1,16 @@
-﻿using System.Collections.Generic;
+﻿using System;
+using System.Collections.Generic;
+using System.Threading;
 using UnityEngine;
+using ThreadPriority = UnityEngine.ThreadPriority;
 
 namespace Dasik.PathFinder
 {
     public class Map : MonoBehaviour
     {
+        public delegate void OnScaningComplete();
 
-        internal List<Cell> CellsList=new List<Cell>();
-        private Vector2 _leftBottomPoint;
-        private Vector2 _rightTopPoint;
+        internal List<Cell> CellsList = new List<Cell>();
 
         /// <summary>   
         /// Выполняет сканирование и обработку местности
@@ -16,28 +18,18 @@ namespace Dasik.PathFinder
         /// <param name="leftBottomPoint">Левая нижняя точка выбранной местности</param>
         /// <param name="rightTopPoint">Правая верхняя точка выбранной иестности</param>
         /// <param name="addToExistingMap">На данный момент не работает</param>
-        public void ScanArea(Vector2 leftBottomPoint, Vector2 rightTopPoint, bool addToExistingMap = false)
+        /// 
+        public void ScanArea(Vector2 leftBottomPoint, Vector2 rightTopPoint, OnScaningComplete callback, bool addToExistingMap = false)
         {
-            _leftBottomPoint = leftBottomPoint;
-            _rightTopPoint = rightTopPoint;
             if (!addToExistingMap)
             {
-                var InitialCell = new Cell(leftBottomPoint + Vector2.one);
-                var hits = Physics2D.OverlapBoxAll(leftBottomPoint, Vector2.one, 0);
-                foreach (var hit in hits)
-                {
-                    if (hit.gameObject.isStatic)
-                    {
-                        var goType = hit.GetComponent<ObstacleType>();
-                        InitialCell.Type = goType == null ? CellType.Static : goType.Type;
-                        break;
-                    }
-                }
+                CellsList.Clear();
             }
-            for (Vector2 pos = leftBottomPoint; pos.x < rightTopPoint.x; pos.x += 1f)
+            Dictionary<Vector2, Cell> CellDict = new Dictionary<Vector2, Cell>();
+            for (Vector2 pos = leftBottomPoint; pos.x < rightTopPoint.x; pos.x += 1f)//Просто сканирование всей карты и занесение всех элементов в список
                 for (pos.y = leftBottomPoint.y; pos.y < rightTopPoint.y; pos.y += 1f)
                 {
-                    var currrentCell=new Cell(pos);
+                    var currrentCell = new Cell(pos);
                     var hits = Physics2D.OverlapBoxAll(pos, Vector2.one, 0);
                     currrentCell.Type = CellType.Free;
                     foreach (var hit in hits)
@@ -49,22 +41,82 @@ namespace Dasik.PathFinder
                             break;
                         }
                     }
-                    CellsList.Add(currrentCell);
+                    CellDict.Add(currrentCell.Position, currrentCell);
+                    currrentCell.Neighbours = new List<Cell>(8);
+
+                    #region addingNeighbours
+                    var neighbour = (getCell(currrentCell.Position.x, currrentCell.Position.y + 1, CellDict));
+                    if (neighbour != null)
+                        currrentCell.Neighbours.Add(neighbour);
+                    neighbour = (getCell(currrentCell.Position.x + 1, currrentCell.Position.y + 1, CellDict));
+                    if (neighbour != null)
+                        currrentCell.Neighbours.Add(neighbour);
+                    neighbour = (getCell(currrentCell.Position.x + 1, currrentCell.Position.y, CellDict));
+                    if (neighbour != null)
+                        currrentCell.Neighbours.Add(neighbour);
+                    neighbour = (getCell(currrentCell.Position.x + 1, currrentCell.Position.y - 1, CellDict));
+                    if (neighbour != null)
+                        currrentCell.Neighbours.Add(neighbour);
+                    neighbour = (getCell(currrentCell.Position.x, currrentCell.Position.y - 1, CellDict));
+                    if (neighbour != null)
+                        currrentCell.Neighbours.Add(neighbour);
+                    neighbour = (getCell(currrentCell.Position.x - 1, currrentCell.Position.y - 1, CellDict));
+                    if (neighbour != null)
+                        currrentCell.Neighbours.Add(neighbour);
+                    neighbour = (getCell(currrentCell.Position.x - 1, currrentCell.Position.y, CellDict));
+                    if (neighbour != null)
+                        currrentCell.Neighbours.Add(neighbour);
+                    neighbour = (getCell(currrentCell.Position.x - 1, currrentCell.Position.y + 1, CellDict));
+                    if (neighbour != null)
+                        currrentCell.Neighbours.Add(neighbour);
+                    #endregion
+
+                    foreach (var currrentCellNeighbour in currrentCell.Neighbours)
+                    {
+                        currrentCellNeighbour.Neighbours.Add(currrentCell);
+                    }
                 }
+            CellsList.AddRange(CellDict.Values);
+            if (callback != null)
+                callback();
         }
 
-        
-            //currentCell.Neighbours = new Cell[8]
+
+
+        private Cell getCell(float x, float y, Dictionary<Vector2, Cell> dict)
+        {
+            Cell result = null;
+            if (!dict.TryGetValue(new Vector2(x, y), out result))
+                return null;
+            //var result = CellsList.Find(cell =>
             //{
-            //    GenerateOrGetCell(new Vector2(currentCell.Position.x,currentCell.Position.y+1)),
-            //    GenerateOrGetCell(new Vector2(currentCell.Position.x+1,currentCell.Position.y+1)),
-            //    GenerateOrGetCell(new Vector2(currentCell.Position.x+1,currentCell.Position.y)),
-            //    GenerateOrGetCell(new Vector2(currentCell.Position.x+1,currentCell.Position.y-1)),
-            //    GenerateOrGetCell(new Vector2(currentCell.Position.x,currentCell.Position.y-1)),
-            //    GenerateOrGetCell(new Vector2(currentCell.Position.x-1,currentCell.Position.y-1)),
-            //    GenerateOrGetCell(new Vector2(currentCell.Position.x-1,currentCell.Position.y)),
-            //    GenerateOrGetCell(new Vector2(currentCell.Position.x-1,currentCell.Position.y+1))
-            //};
+            //    if (cell.Position.x.Equals(x) &&
+            //        cell.Position.y.Equals(y))
+            //        return true;
+            //    return false;
+            //});
+
+            return result;
+            //foreach (var item in CellsList)
+            //{
+            //    if (item.Position.Equals(position))
+            //        return item;
+            //}
+            //return null;
+        }
+
+
+        //currentCell.Neighbours = new Cell[8]
+        //{
+        //    GenerateOrGetCell(new Vector2(currentCell.Position.x,currentCell.Position.y+1)),
+        //    GenerateOrGetCell(new Vector2(currentCell.Position.x+1,currentCell.Position.y+1)),
+        //    GenerateOrGetCell(new Vector2(currentCell.Position.x+1,currentCell.Position.y)),
+        //    GenerateOrGetCell(new Vector2(currentCell.Position.x+1,currentCell.Position.y-1)),
+        //    GenerateOrGetCell(new Vector2(currentCell.Position.x,currentCell.Position.y-1)),
+        //    GenerateOrGetCell(new Vector2(currentCell.Position.x-1,currentCell.Position.y-1)),
+        //    GenerateOrGetCell(new Vector2(currentCell.Position.x-1,currentCell.Position.y)),
+        //    GenerateOrGetCell(new Vector2(currentCell.Position.x-1,currentCell.Position.y+1))
+        //};
 
         //internal Cell InitialCell;
         //private Vector2 _leftBottomPoint;

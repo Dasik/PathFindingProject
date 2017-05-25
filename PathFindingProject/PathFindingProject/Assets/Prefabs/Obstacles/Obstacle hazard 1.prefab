@@ -90,7 +90,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   MinScale: 0.25
-  MaxScale: 5
+  MaxScale: 10
 --- !u!114 &114562620331730166
 MonoBehaviour:
   m_ObjectHideFlags: 1
