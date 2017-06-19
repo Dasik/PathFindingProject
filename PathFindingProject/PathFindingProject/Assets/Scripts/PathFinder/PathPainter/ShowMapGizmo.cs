@@ -24,16 +24,16 @@ namespace Dasik.PathFinder
         void OnDrawGizmosSelected()
         {
             DrawCells(CurrentMap.CellsList);
-            drawOpenList(PathFinding.sortedOpen);
+            //drawOpenList(PathFinding.sortedOpen);
             if (!isPathGetting)
             {
                 isPathGetting = true;
                 //PathFinding.GetPath(new Vector2(-10f, 0f),
                 //    new Vector2(-450f, 0f),
                 //    list => path = list);
-                PathFinding.GetPath(StartGoalPoints.LeftBottomPoint,
+                PathFinding.GetPath<object>(StartGoalPoints.LeftBottomPoint,
                     StartGoalPoints.RightTopPoint,
-                    list => path = list);
+                    (param,list) => path = list);
             }
             if (path != null)
                 DrawPath();
@@ -41,18 +41,25 @@ namespace Dasik.PathFinder
             //Debug.Log("count=" + path.Count);
         }
 
-        private void DrawCells(List<Cell> cell)
+        private void DrawCells(Dictionary<Vector2,Cell> cell)
         {
-            foreach (var currentCell in cell)
+            try
             {
-                if (currentCell == null)
-                    return;
-                if (currentCell.Type == CellType.Static)
-                    Gizmos.color = Color.red;
-                else if (currentCell.Type == CellType.Unwanted)
-                    Gizmos.color = Color.yellow;
-                if (currentCell.Type != CellType.Free)
-                    Gizmos.DrawCube(new Vector3(currentCell.Position.x, currentCell.Position.y, 0), Vector3.one);
+                foreach (var currentCell in cell.Values)
+                {
+                    if (currentCell == null)
+                        return;
+                    if (currentCell.Type == CellType.Static)
+                        Gizmos.color = Color.black;
+                    else if (currentCell.Type == CellType.Unwanted)
+                        Gizmos.color = Color.yellow;
+                    if (currentCell.Type != CellType.Free)
+                        Gizmos.DrawCube(new Vector3(currentCell.Position.x, currentCell.Position.y, 0), Vector3.one);
+                }
+            }
+            catch (Exception e)
+            {
+                Debug.Log(e);
             }
         }
 
@@ -78,7 +85,7 @@ namespace Dasik.PathFinder
         {
             foreach (var item in path)
             {
-                Gizmos.color = Color.green;
+                Gizmos.color = Color.white;
                 Gizmos.DrawCube(new Vector3(item.x, item.y, 0), Vector3.one);
             }
         }

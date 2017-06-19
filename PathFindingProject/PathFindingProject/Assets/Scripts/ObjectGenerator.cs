@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections.Generic;
 using UnityEngine;
 using Random = System.Random;
 
@@ -11,6 +12,7 @@ public class ObjectGenerator : MonoBehaviour
     public Transform AgentsParent;
     public Transform ObstaclesParent;
     private Random random=new Random();
+    public List<GameObject> Agents;
     
     void Start()
     {
@@ -25,8 +27,8 @@ public class ObjectGenerator : MonoBehaviour
         for (Vector2 pos = leftBottomPoint; pos.x < rightTopPoint.x; pos.x += step.x)
             for (pos.y = leftBottomPoint.y; pos.y < rightTopPoint.y; pos.y += step.y)
             {
-                var obj = Instantiate(AgentPrefabForInit, new Vector3(pos.x, pos.y, z), Quaternion.identity);
-                obj.GetComponent<Transform>().SetParent(AgentsParent);
+                var obj = Instantiate(AgentPrefabForInit, new Vector3(pos.x, pos.y, z), Quaternion.identity,AgentsParent);
+                Agents.Add(obj);
             }
     }
 
@@ -39,8 +41,8 @@ public class ObjectGenerator : MonoBehaviour
             {
                 var obj = Instantiate(ObstaclesPrefabForInit[random.Next(0,ObstaclesPrefabForInit.Length)],
                                         new Vector3(pos.x, pos.y, z),
-                                        Quaternion.identity);
-                obj.GetComponent<Transform>().SetParent(ObstaclesParent);
+                                        Quaternion.identity,
+                                        ObstaclesParent);
             }
     }
 

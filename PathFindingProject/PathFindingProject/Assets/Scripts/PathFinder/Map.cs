@@ -1,218 +1,242 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Threading;
 using UnityEngine;
-using ThreadPriority = UnityEngine.ThreadPriority;
 
 namespace Dasik.PathFinder
 {
     public class Map : MonoBehaviour
     {
-        public delegate void OnScaningComplete();
+        public delegate void OnOperationComplete();
 
-        internal List<Cell> CellsList = new List<Cell>();
+        internal Dictionary<Vector2, Cell> CellsList = new Dictionary<Vector2, Cell>();
+        internal Dictionary<GameObject, List<Cell>> CellsFromGameobject = new Dictionary<GameObject, List<Cell>>();
 
         /// <summary>   
         /// Выполняет сканирование и обработку местности
         /// </summary>
         /// <param name="leftBottomPoint">Левая нижняя точка выбранной местности</param>
         /// <param name="rightTopPoint">Правая верхняя точка выбранной иестности</param>
+        /// <param name="callback">Уведомление о завершении операции</param>
         /// <param name="addToExistingMap">На данный момент не работает</param>
         /// 
-        public void ScanArea(Vector2 leftBottomPoint, Vector2 rightTopPoint, OnScaningComplete callback, bool addToExistingMap = false)
+        public void ScanArea(Vector2 leftBottomPoint, Vector2 rightTopPoint, OnOperationComplete callback=null, bool addToExistingMap = false)
         {
             if (!addToExistingMap)
             {
                 CellsList.Clear();
+                CellsFromGameobject.Clear();
             }
-            Dictionary<Vector2, Cell> CellDict = new Dictionary<Vector2, Cell>();
             for (Vector2 pos = leftBottomPoint; pos.x < rightTopPoint.x; pos.x += 1f)//Просто сканирование всей карты и занесение всех элементов в список
                 for (pos.y = leftBottomPoint.y; pos.y < rightTopPoint.y; pos.y += 1f)
                 {
-                    var currrentCell = new Cell(pos);
-                    var hits = Physics2D.OverlapBoxAll(pos, Vector2.one, 0);
-                    currrentCell.Type = CellType.Free;
-                    foreach (var hit in hits)
-                    {
-                        //if (hit.gameObject.isStatic)
-                        //{
-                        //    var goType = hit.GetComponent<ObstacleType>();
-                        //    currrentCell.Type = goType == null ? CellType.Static : goType.Type;
-                        //    break;
-                        //}
-                        if (hit.gameObject.isStatic)
-                        {
-                            currrentCell.Type =  CellType.Static;
-                        }
-                        var goType = hit.GetComponent<ObstacleType>();
-                        if (goType != null)
-                        {
-                            currrentCell.Type = goType.Type;
-                            break;
-                        }
-                    }
-                    CellDict.Add(currrentCell.Position, currrentCell);
-                    currrentCell.Neighbours = new List<Cell>(8);
-
-                    #region addingNeighbours
-                    var neighbour = (getCell(currrentCell.Position.x, currrentCell.Position.y + 1, CellDict));
-                    if (neighbour != null)
-                        currrentCell.Neighbours.Add(neighbour);
-                    neighbour = (getCell(currrentCell.Position.x + 1, currrentCell.Position.y + 1, CellDict));
-                    if (neighbour != null)
-                        currrentCell.Neighbours.Add(neighbour);
-                    neighbour = (getCell(currrentCell.Position.x + 1, currrentCell.Position.y, CellDict));
-                    if (neighbour != null)
-                        currrentCell.Neighbours.Add(neighbour);
-                    neighbour = (getCell(currrentCell.Position.x + 1, currrentCell.Position.y - 1, CellDict));
-                    if (neighbour != null)
-                        currrentCell.Neighbours.Add(neighbour);
-                    neighbour = (getCell(currrentCell.Position.x, currrentCell.Position.y - 1, CellDict));
-                    if (neighbour != null)
-                        currrentCell.Neighbours.Add(neighbour);
-                    neighbour = (getCell(currrentCell.Position.x - 1, currrentCell.Position.y - 1, CellDict));
-                    if (neighbour != null)
-                        currrentCell.Neighbours.Add(neighbour);
-                    neighbour = (getCell(currrentCell.Position.x - 1, currrentCell.Position.y, CellDict));
-                    if (neighbour != null)
-                        currrentCell.Neighbours.Add(neighbour);
-                    neighbour = (getCell(currrentCell.Position.x - 1, currrentCell.Position.y + 1, CellDict));
-                    if (neighbour != null)
-                        currrentCell.Neighbours.Add(neighbour);
-                    #endregion
-
-                    foreach (var currrentCellNeighbour in currrentCell.Neighbours)
-                    {
-                        currrentCellNeighbour.Neighbours.Add(currrentCell);
-                    }
+                    var cell = scanCell(pos);
+                    addNeighbours(cell);
                 }
-            CellsList.AddRange(CellDict.Values);
             if (callback != null)
                 callback();
         }
 
-
-
-        private Cell getCell(float x, float y, Dictionary<Vector2, Cell> dict)
+        internal Cell scanCell(Vector2 pos)
         {
-            Cell result = null;
-            if (!dict.TryGetValue(new Vector2(x, y), out result))
-                return null;
-            //var result = CellsList.Find(cell =>
-            //{
-            //    if (cell.Position.x.Equals(x) &&
-            //        cell.Position.y.Equals(y))
-            //        return true;
-            //    return false;
-            //});
+            var currrentCell = new Cell(pos);
+            var hits = Physics2D.OverlapBoxAll(pos, Vector2.one, 0);
+            currrentCell.Type = CellType.Free;
+            foreach (var hit in hits)
+            {
+                //if (hit.gameObject.isStatic)
+                //{
+                //    var goType = hit.GetComponent<ObstacleType>();
+                //    currrentCell.Type = goType == null ? CellType.Static : goType.Type;
+                //    break;
+                //}
+                if (hit.gameObject.isStatic)
+                {
+                    currrentCell.Type = CellType.Static;
+                    currrentCell.GameObject = hit.gameObject;
+                }
+                var goType = hit.GetComponent<MapObject>();
+                if (goType != null)
+                {
+                    currrentCell.Type = goType.Type;
+                    goType.AddOnTypeChangedEventHandler(this,(gameobject, type, newType) =>
+                    {
+                        var cells = GetCells(gameobject);
+                        foreach (var cell in cells)
+                        {
+                            cell.Type = newType;
+                        }
+                    });
+                    goType.AddOnPositionChangeEventHandler(this,(gameobject, oldPosition, newPosition) =>
+                    {
+                        var direction = Utils.floorVector2(newPosition - oldPosition);
+                        var cells = GetCells(gameobject);
+                        var newCells = new List<Cell>();
+                        CellsFromGameobject[gameobject] = newCells;
+                        foreach (var cell in cells)
+                        {
+                            Vector2 newCellPos = Utils.floorVector2(cell.Position + direction);
+                            Cell newCell;
+                            if (!CellsList.TryGetValue(newCellPos, out newCell))
+                            {
+                                newCell = new Cell(newCellPos)
+                                {
+                                    Type = cell.Type,
+                                    GameObject = cell.GameObject
+                                };
+                                addNeighbours(newCell);
+                                CellsList.Add(newCellPos, newCell);
+                            }
+                            else
+                            {
+                                newCell.GameObject = cell.GameObject;
+                                newCell.Type = cell.Type;
+                            }
+                            newCells.Add(newCell);
 
-            return result;
-            //foreach (var item in CellsList)
-            //{
-            //    if (item.Position.Equals(position))
-            //        return item;
-            //}
-            //return null;
+                            var oldCell = scanCell(cell.Position);
+                            cell.GameObject = oldCell.GameObject;
+                            cell.Type = oldCell.Type;
+                            if (cell.GameObject != null)
+                            {
+                                List<Cell> oldCellList = null;
+                                if (CellsFromGameobject.TryGetValue(cell.GameObject, out oldCellList))
+                                {
+                                    oldCellList.Add(cell);
+                                }
+                                else
+                                {
+                                    oldCellList = new List<Cell>() { cell };
+                                    CellsFromGameobject.Add(cell.GameObject, oldCellList);
+                                }
+
+                            }
+                        }
+                    })
+                    ;
+                    currrentCell.GameObject = hit.gameObject;
+                    break;
+                }
+            }
+            Cell CellInDict;
+            if (!CellsList.TryGetValue(currrentCell.Position, out CellInDict))
+            {
+                CellsList.Add(currrentCell.Position, currrentCell);
+                if (currrentCell.GameObject != null)
+                {
+                    List<Cell> cellFromGameobject;
+                    if (CellsFromGameobject.TryGetValue(currrentCell.GameObject, out cellFromGameobject))
+                        cellFromGameobject.Add(currrentCell);
+                    else
+                    {
+                        cellFromGameobject = new List<Cell>() { currrentCell };
+                        CellsFromGameobject.Add(currrentCell.GameObject, cellFromGameobject);
+                    }
+                }
+            }
+            else
+            {
+                CellInDict.Type = currrentCell.Type;
+                CellInDict.GameObject = currrentCell.GameObject;
+                currrentCell = CellInDict;
+            }
+            return currrentCell;
+        }
+
+        internal void addNeighbours(Cell cell)
+        {
+            cell.Neighbours = new List<Cell>(8);
+
+            #region addingNeighbours
+            var neighbour = (getCell(cell.Position.x, cell.Position.y + 1));
+            if (neighbour != null)
+                cell.Neighbours.Add(neighbour);
+            neighbour = (getCell(cell.Position.x + 1, cell.Position.y + 1));
+            if (neighbour != null)
+                cell.Neighbours.Add(neighbour);
+            neighbour = (getCell(cell.Position.x + 1, cell.Position.y));
+            if (neighbour != null)
+                cell.Neighbours.Add(neighbour);
+            neighbour = (getCell(cell.Position.x + 1, cell.Position.y - 1));
+            if (neighbour != null)
+                cell.Neighbours.Add(neighbour);
+            neighbour = (getCell(cell.Position.x, cell.Position.y - 1));
+            if (neighbour != null)
+                cell.Neighbours.Add(neighbour);
+            neighbour = (getCell(cell.Position.x - 1, cell.Position.y - 1));
+            if (neighbour != null)
+                cell.Neighbours.Add(neighbour);
+            neighbour = (getCell(cell.Position.x - 1, cell.Position.y));
+            if (neighbour != null)
+                cell.Neighbours.Add(neighbour);
+            neighbour = (getCell(cell.Position.x - 1, cell.Position.y + 1));
+            if (neighbour != null)
+                cell.Neighbours.Add(neighbour);
+            #endregion
+
+            foreach (var currrentCellNeighbour in cell.Neighbours)
+            {
+                currrentCellNeighbour.Neighbours.Add(cell);
+            }
+        }
+
+        /// <summary>
+        /// Удаляет просканированную область
+        /// </summary>
+        /// <param name="leftBottomPoint">Левая нижняя точка выбранной местности</param>
+        /// <param name="rightTopPoint">Правая верхняя точка выбранной иестности</param>
+        /// <param name="callback">Уведомление о завершении операции</param>
+        public void RemoveArea(Vector2 leftBottomPoint, Vector2 rightTopPoint, OnOperationComplete callback=null)
+        {
+            Thread thr = new Thread(() =>
+              {
+                  var toRemove = CellsList.Where(pair => Utils.checkBounds(pair.Key, leftBottomPoint, rightTopPoint));
+                  foreach (var item in toRemove)
+                  {
+                      CellsList.Remove(item.Key);
+                      if (item.Value.GameObject != null)
+                          CellsFromGameobject.Remove(item.Value.GameObject);
+                  }
+                  foreach (var cell in CellsList)
+                  {
+                      cell.Value.Neighbours.RemoveAll(cellN => Utils.checkBounds(cellN.Position, leftBottomPoint, rightTopPoint));
+                  }
+                  if (callback != null)
+                      callback();
+              });
+            thr.Start();
+        }
+
+        public void ClearMap()
+        {
+            CellsList.Clear();
+            CellsFromGameobject.Clear();
         }
 
 
-        //currentCell.Neighbours = new Cell[8]
-        //{
-        //    GenerateOrGetCell(new Vector2(currentCell.Position.x,currentCell.Position.y+1)),
-        //    GenerateOrGetCell(new Vector2(currentCell.Position.x+1,currentCell.Position.y+1)),
-        //    GenerateOrGetCell(new Vector2(currentCell.Position.x+1,currentCell.Position.y)),
-        //    GenerateOrGetCell(new Vector2(currentCell.Position.x+1,currentCell.Position.y-1)),
-        //    GenerateOrGetCell(new Vector2(currentCell.Position.x,currentCell.Position.y-1)),
-        //    GenerateOrGetCell(new Vector2(currentCell.Position.x-1,currentCell.Position.y-1)),
-        //    GenerateOrGetCell(new Vector2(currentCell.Position.x-1,currentCell.Position.y)),
-        //    GenerateOrGetCell(new Vector2(currentCell.Position.x-1,currentCell.Position.y+1))
-        //};
+        private Cell getCell(Vector2 pos)
+        {
+            return getCell(pos.x, pos.y);
+        }
 
-        //internal Cell InitialCell;
-        //private Vector2 _leftBottomPoint;
-        //private Vector2 _rightTopPoint;
+        private Cell getCell(float x, float y)
+        {
+            Cell result = null;
+            if (!CellsList.TryGetValue(new Vector2(x, y), out result))
+                return null;
+            return result;
+        }
 
-        ///// <summary>
-        ///// 
-        ///// </summary>
-        ///// <param name="leftBottomPoint"></param>
-        ///// <param name="rightTopPoint"></param>
-        ///// <param name="addToExistingMap">На данный момент не работает</param>
-        //public void ScanArea(Vector2 leftBottomPoint, Vector2 rightTopPoint, bool addToExistingMap = false)
-        //{
-        //    _leftBottomPoint = leftBottomPoint;
-        //    _rightTopPoint = rightTopPoint;
-        //    if (!addToExistingMap)
-        //    {
-        //        InitialCell = new Cell(leftBottomPoint+Vector2.one);
-        //        var hits = Physics2D.OverlapBoxAll(leftBottomPoint, Vector2.one, 0);
-        //        foreach (var hit in hits)
-        //        {
-        //            if (hit.gameObject.isStatic)
-        //            {
-        //                var goType = hit.GetComponent<ObstacleType>();
-        //                InitialCell.Type = goType == null ? CellType.Static : goType.Type;
-        //                break;
-        //            }
-        //        }
-        //    }
-        //    ScanNeighbours(InitialCell);
-        //}
-
-        //private void ScanNeighbours(Cell currentCell)
-        //{
-        //    if (currentCell == null || !Utils.checkBounds(currentCell.Position, _leftBottomPoint, _rightTopPoint))
-        //        return;
-        //    //var hits = Physics2D.OverlapBoxAll(currentCell.Position, Vector2.one, 0);
-        //    //foreach (var hit in hits)
-        //    //{
-        //    //    if (hit.gameObject.isStatic)
-        //    //    {
-        //    //        var goType = hit.GetComponent<ObstacleType>();
-        //    //        currentCell.Type = goType == null ? CellType.Static : goType.Type;
-        //    //        break;
-        //    //    }
-        //    //}
-        //    currentCell.Neighbours = new Cell[8]
-        //    {
-        //        GenerateOrGetCell(new Vector2(currentCell.Position.x,currentCell.Position.y+1)),
-        //        GenerateOrGetCell(new Vector2(currentCell.Position.x+1,currentCell.Position.y+1)),
-        //        GenerateOrGetCell(new Vector2(currentCell.Position.x+1,currentCell.Position.y)),
-        //        GenerateOrGetCell(new Vector2(currentCell.Position.x+1,currentCell.Position.y-1)),
-        //        GenerateOrGetCell(new Vector2(currentCell.Position.x,currentCell.Position.y-1)),
-        //        GenerateOrGetCell(new Vector2(currentCell.Position.x-1,currentCell.Position.y-1)),
-        //        GenerateOrGetCell(new Vector2(currentCell.Position.x-1,currentCell.Position.y)),
-        //        GenerateOrGetCell(new Vector2(currentCell.Position.x-1,currentCell.Position.y+1))
-        //    };
-        //    foreach (var currentCellNeighbour in currentCell.Neighbours)
-        //    {
-        //        if (currentCellNeighbour != null)
-        //            ScanNeighbours(currentCellNeighbour);
-        //    }
-        //}
-
-        //private Cell GenerateOrGetCell(Vector2 position)
-        //{
-        //    if (!Utils.checkBounds(position, _leftBottomPoint, _rightTopPoint))
-        //        return null;
-        //    var result = Utils.GetCell(position, InitialCell);
-        //    if (result == null)
-        //    {
-        //        result = new Cell(position);
-        //        var hits = Physics2D.OverlapBoxAll(result.Position, Vector2.one, 0);
-        //        foreach (var hit in hits)
-        //        {
-        //            if (hit.gameObject.isStatic)
-        //            {
-        //                var goType = hit.GetComponent<ObstacleType>();
-        //                result.Type = goType == null ? CellType.Static : goType.Type;
-        //                break;
-        //            }
-        //            result.Type=CellType.Free;
-        //        }
-        //    }
-        //    return result;
-        //}
+        internal List<Cell> GetCells(GameObject go)
+        {
+            if (go == null)
+                return null;
+            List<Cell> result;
+            if (CellsFromGameobject.TryGetValue(go, out result))
+                return result;
+            return null;
+        }
     }
 }
 

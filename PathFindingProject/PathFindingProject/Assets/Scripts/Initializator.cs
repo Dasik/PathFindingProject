@@ -10,6 +10,7 @@ public class Initializator : MonoBehaviour
     public AreaRange AgentsArea;
     public AreaRange ObstaclesArea;
     public AreaRange ScanArea;
+    public AreaRange RemoveArea;
 
     void Start()
     {
@@ -21,6 +22,9 @@ public class Initializator : MonoBehaviour
                                             ObstaclesCount));
         CurrentMap.ScanArea(ScanArea.LeftBottomPoint,
                             ScanArea.RightTopPoint,
+                            null);
+        CurrentMap.RemoveArea(RemoveArea.LeftBottomPoint,
+                            RemoveArea.RightTopPoint,
                             null);
         //CurrentMap.ScanArea(new Vector2(-10, -10),
         //            new Vector2(0, 0));

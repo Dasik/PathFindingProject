@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 
@@ -15,67 +16,19 @@ namespace Dasik.PathFinder
         /// <param name="position">Позиция, по которой следует выполнять поиск</param>
         /// <param name="Cells">Ясейки для поиска</param>
         /// <returns>Найденную ячейку в случае успеха, иначе null</returns>
-        internal static Cell GetCell(Vector2 position, List<Cell> Cells)
+        internal static Cell GetCell(Vector2 position, Dictionary<Vector2, Cell> Cells)
         {
-            foreach (var cell in Cells)
-            {
-                if (cell.Position == position)
-                    return cell;
-            }
-            return null;
+            Cell result;
+            if (!Cells.TryGetValue(position, out result))
+                return null;
+            return result;
         }
-
-        //private static readonly List<Cell> passedCells = new List<Cell>();
-        //internal static Cell GetCell(Vector2 position, Cell initialCell)
-        //{
-        //    var result= GetCell(initialCell, position);
-        //    passedCells.Clear();
-        //    return result;
-        //}
-
-        //private static Cell GetCell(Cell currentCell, Vector2 position)
-        //{
-        //    if (currentCell == null || passedCells.Contains(currentCell))
-        //        return null;
-        //    if (Math.Abs((currentCell.Position - position).sqrMagnitude) < SearchOccuracy)
-        //        return currentCell;
-        //    passedCells.Add(currentCell);
-        //    Cell result = null;
-        //    foreach (var neighbour in currentCell.Neighbours)
-        //    {
-        //        if (neighbour==null)
-        //            continue;
-        //        result = GetCell(neighbour, position);
-        //        if (result != null)
-        //            break;
-        //    }
-        //    return result;
-        //}
-        //Код, который ниже будет проходить по уже пройденным ячейкам
-        //internal static Cell GetCell(Vector2 position, Cell initialCell)
-        //{
-        //    return GetCell(initialCell, position, initialCell);
-        //}
-
-        //private static Cell GetCell(Cell currentCell, Vector2 position, Cell initialCell)
-        //{
-        //    if (currentCell == null)
-        //        return null;
-        //    if (Math.Abs((currentCell.Position - position).sqrMagnitude) < SearchOccuracy)
-        //        return currentCell;
-        //    Cell result = null;
-        //    var currentDistance = (currentCell.Position - initialCell.Position).sqrMagnitude;
-        //    foreach (var neighbour in currentCell.Neighbour)
-        //    {
-        //        var neighbourDistance = (neighbour.Position - initialCell.Position).sqrMagnitude;
-        //        if (neighbourDistance < currentDistance)
-        //            continue;
-        //        result = GetCell(neighbour, position, initialCell);
-        //        if (result != null)
-        //            break;
-        //    }
-        //    return result;
-        //}
+        
+        internal static Vector2 floorVector2(Vector2 v)
+        {
+            return new Vector2(Mathf.Floor(v.x),
+                                        Mathf.Floor(v.y));
+        }
 
         internal static bool checkBounds(Vector2 position, Vector2 leftBottomPoint, Vector2 rightTopPoint)
         {
@@ -88,15 +41,17 @@ namespace Dasik.PathFinder
 
     internal class Cell
     {
-        public readonly Vector2 Position;
+        public Vector2 Position;
         public CellType Type;
         public List<Cell> Neighbours;
+        public GameObject GameObject;
 
-        public Cell(Vector2 position, CellType type, List<Cell> neighbours)
+        public Cell(Vector2 position, CellType type, List<Cell> neighbours, GameObject gameObject)
         {
             Position = position;
             Type = type;
             Neighbours = neighbours;
+            GameObject = gameObject;
         }
 
         public Cell(Vector2 position)
@@ -104,7 +59,7 @@ namespace Dasik.PathFinder
             Position = position;
         }
 
-        public Cell() {  }
+        public Cell() { }
 
         public override bool Equals(object obj)
         {
@@ -113,7 +68,9 @@ namespace Dasik.PathFinder
             if (obj.GetType() != typeof(Cell))
                 return false;
             var objCell = obj as Cell;
-            if (objCell != null && Math.Abs((this.Position - objCell.Position).sqrMagnitude) < 0.02)
+            if (objCell != null &&
+                this.GameObject == objCell.GameObject &&
+                Math.Abs((this.Position - objCell.Position).sqrMagnitude) < 0.02)
                 return true;
             return false;
         }
@@ -129,5 +86,64 @@ namespace Dasik.PathFinder
         Static,
         Unwanted,
         Free
+    }
+
+    public class SyncList<T>
+    {
+        private List<T> _list=new List<T>();
+        private object locker=new object();
+
+        public long Count
+        {
+            get
+            {
+                lock (locker)
+                {
+                    return _list.Count;
+                }
+            }
+        }
+
+        public void Add(T item)
+        {
+            lock (locker)
+            {
+                _list.Add(item);
+            }
+        }
+
+        public int RemoveAll(Predicate<T> match)
+        {
+            lock (locker)
+            {
+                return _list.RemoveAll(match);
+            }
+        }
+
+        public bool Contains(T item)
+        {
+            lock (locker)
+            {
+                return _list.Contains(item);
+            }
+        }
+
+        public bool Remove(T item)
+        {
+            lock (locker)
+            {
+                return _list.Remove(item);
+            }    
+        }
+
+        public void Clear()
+        {
+            lock (locker)
+            {
+                _list.Clear();
+            }
+        }
+
+
     }
 }

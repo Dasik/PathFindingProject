@@ -4,21 +4,20 @@ public class RandomScale : MonoBehaviour
 {
     public float MinScale = 1f;
     public float MaxScale = 1f;
-    private Transform myTransform;
-    private Vector3 OriginalTransformScale;
-    private float OriginalPSScale = 1f;
+    private Transform _transform;
+    private Vector3 _originalTransformScale;
 
     void Awake()
     {
-        myTransform = GetComponent<Transform>();
-        OriginalTransformScale = myTransform.localScale;
+        _transform = GetComponent<Transform>();
+        _originalTransformScale = _transform.localScale;
     }
 
     void OnEnable()
     {
         float tmpScale = Random.Range(MinScale, MaxScale);
-        Vector3 newTransformScale = OriginalTransformScale * tmpScale;
+        Vector3 newTransformScale = _originalTransformScale * tmpScale;
         newTransformScale.z = 1f;
-        myTransform.localScale = newTransformScale;
+        _transform.localScale = newTransformScale;
     }
 }
