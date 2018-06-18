@@ -1,7 +1,4 @@
-﻿using System;
-using System.Collections;
-using System.Collections.Generic;
-using Dasik.PathFinder;
+﻿using Dasik.PathFinder;
 using UnityEngine;
 
 public class StateMachine : MonoBehaviour

@@ -102,10 +102,9 @@ public class TouchDispatcher : MonoBehaviour {
     protected virtual void MakeDetectionTouch()
     {
         int count = Input.touchCount;
-        Touch touch;
         for (int i = 0; i < count; i++)
         {
-            touch = Input.GetTouch(i);
+            var touch = Input.GetTouch(i);
             if (IsPointerOverUIObject(touch.position))
                 continue;
             switch (touch.phase)
@@ -120,8 +119,7 @@ public class TouchDispatcher : MonoBehaviour {
 
     private bool IsPointerOverUIObject(Vector2 position)
     {
-        PointerEventData eventDataCurrentPosition = new PointerEventData(EventSystem.current);
-        eventDataCurrentPosition.position = position;
+        PointerEventData eventDataCurrentPosition = new PointerEventData(EventSystem.current) {position = position};
         List<RaycastResult> results = new List<RaycastResult>();
         EventSystem.current.RaycastAll(eventDataCurrentPosition, results);
         return results.Count > 0;

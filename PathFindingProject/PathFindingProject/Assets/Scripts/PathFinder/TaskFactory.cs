@@ -7,7 +7,7 @@ internal class TaskFactory : MonoBehaviour
 {
     public static TaskFactory Instance;
     public delegate void TaskDelegate();
-    private Queue<TaskDelegate> TasksQueue = new Queue<TaskDelegate>();
+    private readonly Queue<TaskDelegate> TasksQueue = new Queue<TaskDelegate>();
 
     void Start()
     {

@@ -1,5 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
+﻿using System.Collections.Generic;
 using System.Linq;
 using System.Threading;
 using UnityEngine;
@@ -114,7 +113,7 @@ namespace Dasik.PathFinder
                              cell.Type = oldCell.Type;
                              if (cell.GameObject != null)
                              {
-                                 List<Cell> oldCellList = null;
+                                 List<Cell> oldCellList;
                                  if (CellsFromGameobject.TryGetValue(cell.GameObject, out oldCellList))
                                  {
                                      oldCellList.Add(cell);
@@ -236,10 +235,8 @@ namespace Dasik.PathFinder
 
         private Cell getCell(float x, float y)
         {
-            Cell result = null;
-            if (!CellsList.TryGetValue(new Vector2(x, y), out result))
-                return null;
-            return result;
+            Cell result;
+            return !CellsList.TryGetValue(new Vector2(x, y), out result) ? null : result;
         }
 
         internal List<Cell> GetCells(GameObject go)

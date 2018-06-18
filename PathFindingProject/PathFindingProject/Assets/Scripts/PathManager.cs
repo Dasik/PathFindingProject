@@ -1,8 +1,8 @@
-﻿using System;
-using System.Collections;
-using System.Collections.Generic;
+﻿using System.Collections.Generic;
+using System.Diagnostics;
 using UnityEngine;
 using Dasik.PathFinder;
+using Debug = UnityEngine.Debug;
 
 public class PathManager : MonoBehaviour
 {
@@ -22,14 +22,10 @@ public class PathManager : MonoBehaviour
     {
         if (!pathSended)
         {
-            int counter = 0;
             foreach (var item in pathesDictionary)
             {
                 //item.Key.GetComponent<AgentScript>().ApplyPath(item.Value);
-                if (item.Value == null)
-                    item.Key.SendMessage("ApplyPath", new List<Vector2>());
-                else
-                    item.Key.SendMessage("ApplyPath", item.Value);
+                item.Key.SendMessage("ApplyPath", item.Value ?? new List<Vector2>());
             }
             pathSended = true;
         }
@@ -49,9 +45,17 @@ public class PathManager : MonoBehaviour
         {
             dict.Add(item, item.transform.position);
         }
+#if UNITY_EDITOR
+        Stopwatch sw = new Stopwatch();
+        sw.Start();
+#endif
         pathFinderId = PathFinder.GetPathes(dict, targetPoint, ((o, pathes) =>
           {
-              Debug.Log("Path founded");
+#if UNITY_EDITOR
+              sw.Stop();
+              Debug.Log("Path founded in: "+sw.Elapsed);
+#endif
+              
               pathesDictionary = pathes;
               pathSended = false;
           }), null, accuracy);

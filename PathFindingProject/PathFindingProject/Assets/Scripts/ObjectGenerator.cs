@@ -12,7 +12,7 @@ public class ObjectGenerator : MonoBehaviour
     public static ObjectGenerator Instance;
     public Transform AgentsParent;
     public Transform ObstaclesParent;
-    private Random random = new Random();
+    private readonly Random random = new Random();
     public List<GameObject> Agents;
 
     void Start()

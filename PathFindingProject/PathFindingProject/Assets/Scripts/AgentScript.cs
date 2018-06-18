@@ -1,5 +1,4 @@
 ﻿using System;
-using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 using Random = System.Random;
@@ -9,12 +8,12 @@ public class AgentScript : MonoBehaviour
 
     private Rigidbody2D _rigidbody;
     private List<Vector2> _path;
-    private int _currentIndex = 0;
+    private int _currentIndex;
     public float MaxSpeed = 10f;
     public float DeltaSpeed = 5f;
     public float ErrorValue = 1f;
     private LineRenderer LineRenderer;
-    private static Random random=new Random();
+    private static readonly Random random=new Random();
     //public float ForceMultipler = 10f;
     // Use this for initialization
     void Start()

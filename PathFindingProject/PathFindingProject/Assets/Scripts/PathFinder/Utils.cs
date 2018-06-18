@@ -1,5 +1,4 @@
 ﻿using System;
-using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 
@@ -41,7 +40,7 @@ namespace Dasik.PathFinder
 
     internal class Cell
     {
-        public Vector2 Position;
+        public readonly Vector2 Position;
         public CellType Type;
         public List<Cell> Neighbours;
         public GameObject GameObject;
@@ -69,8 +68,8 @@ namespace Dasik.PathFinder
                 return false;
             var objCell = obj as Cell;
             if (objCell != null &&
-                this.GameObject == objCell.GameObject &&
-                Math.Abs((this.Position - objCell.Position).sqrMagnitude) < 0.02)
+                GameObject == objCell.GameObject &&
+                Math.Abs((Position - objCell.Position).sqrMagnitude) < 0.02)
                 return true;
             return false;
         }
@@ -90,8 +89,8 @@ namespace Dasik.PathFinder
 
     public class SyncList<T>
     {
-        private List<T> _list=new List<T>();
-        private object locker=new object();
+        private readonly List<T> _list=new List<T>();
+        private readonly object locker=new object();
 
         public long Count
         {

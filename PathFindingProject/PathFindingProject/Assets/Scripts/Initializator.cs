@@ -21,11 +21,9 @@ public class Initializator : MonoBehaviour
                                             ObstaclesArea.RightTopPoint,
                                             ObstaclesCount));
         CurrentMap.ScanArea(ScanArea.LeftBottomPoint,
-                            ScanArea.RightTopPoint,
-                            null);
+                            ScanArea.RightTopPoint);
         CurrentMap.RemoveArea(RemoveArea.LeftBottomPoint,
-                            RemoveArea.RightTopPoint,
-                            null);
+                            RemoveArea.RightTopPoint);
         //CurrentMap.ScanArea(new Vector2(-10, -10),
         //            new Vector2(0, 0));
     }

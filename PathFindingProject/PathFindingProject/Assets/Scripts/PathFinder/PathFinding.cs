@@ -1,21 +1,22 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Linq;
+using System.Diagnostics;
 using System.Runtime.InteropServices;
 using System.Threading;
 using UnityEngine;
+using Debug = UnityEngine.Debug;
 using ThreadPriority = System.Threading.ThreadPriority;
 
 namespace Dasik.PathFinder
 {
     public class PathFinding : MonoBehaviour
     {
-        public delegate void ReturnedPath<T>(T param, List<Vector2> path) where T : class;
+        public delegate void ReturnedPath<in T>(T param, List<Vector2> path) where T : class;
         public delegate void ReturnedPathes<T>(T param, Dictionary<T, List<Vector2>> pathes) where T : class;
 
         private Map map;
-        private SyncList<long> _runnedThreads = new SyncList<long>();
-        private long _threadIdGenerator = 0l;
+        private readonly SyncList<long> _runnedThreads = new SyncList<long>();
+        private long _threadIdGenerator = 0L;
 
 
 
@@ -23,6 +24,7 @@ namespace Dasik.PathFinder
         {
             map = Map.Instance;
         }
+
         public long GetPathes<T>(Dictionary<T, Vector2> objects, Vector2 goalPosition,
             ReturnedPathes<T> callback, T param = null, double accuracy = 1) where T : class
         {
@@ -44,7 +46,7 @@ namespace Dasik.PathFinder
             //List<long> localThreadIds = new List<long>();
             var thrID = Interlocked.Increment(ref _threadIdGenerator);
 
-            Thread worker = new Thread(() => GetPathesParallelWorking<T>(objects, nearestObject, goalPosition, thrID,
+            Thread worker = new Thread(() => GetPathesParallelWorking(objects, nearestObject, goalPosition, thrID,
                 callback, accuracy, param))
             {
                 Priority = ThreadPriority.Normal,
@@ -58,31 +60,30 @@ namespace Dasik.PathFinder
         private void GetPathesParallelWorking<T>(Dictionary<T, Vector2> objects, T nearestObject, Vector2 goalPosition, long threadId,
             ReturnedPathes<T> callback, double accuracy, T param) where T : class
         {
-            List<long> localThreadIds = new List<long>();
             List<Vector2> nearestPath = new List<Vector2>();
             Debug.Log("Nearest: StartPos: " + objects[nearestObject] + "\tGoalPos: " + goalPosition);
-            localThreadIds.Add(
+            var thrId=
                 GetPath<T>(objects[nearestObject], goalPosition, (ident, path) =>
                 {
                     if (path == null || path.Count == 0)
                     {
                         nearestPath = null;
                         Debug.Log("Nearest path was not found");
-                        _runnedThreads.RemoveAll(l => localThreadIds.Contains(l));
                     }
                     else
                     {
                         nearestPath.AddRange(path);
                         Debug.Log("Nearest path was found: " + nearestPath.Count);
                     }
-                }, accuracy)
-            );
+                }, accuracy);
             var result = new Dictionary<T, List<Vector2>>();
             long completedCount = 0;
+
+            List<long> localThreadIds = new List<long>();
             foreach (var item in objects)
             {
                 localThreadIds.Add(
-                    GetPath<T>(item.Value, objects[nearestObject], (ident, path) =>
+                    GetPath(item.Value, objects[nearestObject], (ident, path) =>
                     {
                         completedCount++;
                         if (path == null)
@@ -93,23 +94,23 @@ namespace Dasik.PathFinder
                     }, accuracy, item.Key));
             }
             while (completedCount != objects.Count &&
-                   _runnedThreads.Contains(threadId))
-                ;
-            while (nearestPath != null &&
-                    nearestPath.Count == 0 &&
-                   _runnedThreads.Contains(threadId))
-                ;
-            if (!_runnedThreads.Contains(threadId) || nearestPath == null)
+                   _runnedThreads.Contains(thrId))
             {
-                _runnedThreads.RemoveAll(l => localThreadIds.Contains(l));
-                if (callback != null)
-                    callback(param, null);
-                return;
+                if (!_runnedThreads.Contains(threadId))
+                {
+                    foreach (var localThreadId in localThreadIds)
+                    {
+                        _runnedThreads.Remove(localThreadId);
+                    }
+                    if (callback != null)
+                        callback(param, null);
+                    return;
+                }
             }
-            foreach (var item in result.Keys)
+
+            foreach (var item in result)
             {
-                //result[item].InsertRange(0, nearestPath);
-                result[item].AddRange(nearestPath);
+                item.Value.AddRange(nearestPath);
             }
             if (callback != null)
             {
@@ -156,12 +157,12 @@ namespace Dasik.PathFinder
             if (goalCell.Type == CellType.Static)
             {
                 bool freeFounded = false;
-                foreach (var item in startCell.Neighbours)
+                foreach (var item in goalCell.Neighbours)
                 {
                     if (item.Type == CellType.Free ||
                         item.Type == CellType.Unwanted)
                     {
-                        startCell = item;
+                        goalCell = item;
                         freeFounded = true;
                         break;
                     }
@@ -174,16 +175,6 @@ namespace Dasik.PathFinder
                     return -1;
                 }
             }
-            //open.Clear();
-            //sortedOpen.Clear();
-            //closed.Clear();
-            //var start = new Node(startCell)
-            //{
-            //    g = 0d,
-            //    h = GetDistance(goalPosition, startPosition) * accuracy
-            //};
-            //start.f = start.g + start.h;
-            //PutToOpen(start);
             var thrID = Interlocked.Increment(ref _threadIdGenerator);
             Thread worker = new Thread(() => GetPathParallelWorking(startCell, goalCell, accuracy, callback, thrID, param))
             {
@@ -242,6 +233,7 @@ namespace Dasik.PathFinder
                           "\n This Thread Id: " + threadId + "\n Runned threads count: " + _runnedThreads.Count);
                 while (open.Count != 0 && !closeThread)
                 {
+                    closeThread = !_runnedThreads.Contains(threadId);
                     lngth = open.Count;
                     //Thread.Sleep(1);
                     var x = PopFromOpen();
@@ -307,15 +299,14 @@ namespace Dasik.PathFinder
                             PutToOpen(y);
                         }
                     }
-                    closeThread = !_runnedThreads.Contains(threadId);
                 }
                 Debug.Log("Goal not founded: StartPos: " + startCell.Position + "\tGoalPos: " + goalCell.Position + "length: " + lngth + "" + closeThread);
                 callback(param, null);
             }
-            catch (Exception ex)
-            {
-                Debug.Log(ex);
-            }
+            //catch (Exception ex)
+            //{
+            //    Debug.Log(ex);
+            //}
             finally
             {
                 open.Clear();
@@ -352,7 +343,7 @@ namespace Dasik.PathFinder
             //return Vector2.Distance(v1, v2);
             //return (v1 - v2).sqrMagnitude;
             float z = (v1 - v2).sqrMagnitude;
-            if (z == 0) return 0;
+            if (Math.Abs(z) < 0.0001) return 0;
             FloatIntUnion u;
             u.tmp = 0;
             u.f = z;
