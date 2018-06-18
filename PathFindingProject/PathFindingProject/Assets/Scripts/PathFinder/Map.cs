@@ -8,10 +8,20 @@ namespace Dasik.PathFinder
 {
     public class Map : MonoBehaviour
     {
+        public static Map Instance;
+
         public delegate void OnOperationComplete();
 
         internal Dictionary<Vector2, Cell> CellsList = new Dictionary<Vector2, Cell>();
         internal Dictionary<GameObject, List<Cell>> CellsFromGameobject = new Dictionary<GameObject, List<Cell>>();
+
+        void Start()
+        {
+            if (Instance == null)
+                Instance = this;
+            else
+                Destroy(this);
+        }
 
         /// <summary>   
         /// Выполняет сканирование и обработку местности
@@ -21,13 +31,15 @@ namespace Dasik.PathFinder
         /// <param name="callback">Уведомление о завершении операции</param>
         /// <param name="addToExistingMap">На данный момент не работает</param>
         /// 
-        public void ScanArea(Vector2 leftBottomPoint, Vector2 rightTopPoint, OnOperationComplete callback=null, bool addToExistingMap = false)
+        public void ScanArea(Vector2 leftBottomPoint, Vector2 rightTopPoint, OnOperationComplete callback = null, bool addToExistingMap = true)
         {
             if (!addToExistingMap)
             {
                 CellsList.Clear();
                 CellsFromGameobject.Clear();
             }
+            leftBottomPoint = Utils.floorVector2(leftBottomPoint);
+            rightTopPoint = Utils.floorVector2(rightTopPoint);
             for (Vector2 pos = leftBottomPoint; pos.x < rightTopPoint.x; pos.x += 1f)//Просто сканирование всей карты и занесение всех элементов в список
                 for (pos.y = leftBottomPoint.y; pos.y < rightTopPoint.y; pos.y += 1f)
                 {
@@ -40,6 +52,8 @@ namespace Dasik.PathFinder
 
         internal Cell scanCell(Vector2 pos)
         {
+            //Debug.Log("Scaning cell: "+pos.x+":"+pos.y);
+
             var currrentCell = new Cell(pos);
             var hits = Physics2D.OverlapBoxAll(pos, Vector2.one, 0);
             currrentCell.Type = CellType.Free;
@@ -60,60 +74,60 @@ namespace Dasik.PathFinder
                 if (goType != null)
                 {
                     currrentCell.Type = goType.Type;
-                    goType.AddOnTypeChangedEventHandler(this,(gameobject, type, newType) =>
-                    {
-                        var cells = GetCells(gameobject);
-                        foreach (var cell in cells)
-                        {
-                            cell.Type = newType;
-                        }
-                    });
-                    goType.AddOnPositionChangeEventHandler(this,(gameobject, oldPosition, newPosition) =>
-                    {
-                        var direction = Utils.floorVector2(newPosition - oldPosition);
-                        var cells = GetCells(gameobject);
-                        var newCells = new List<Cell>();
-                        CellsFromGameobject[gameobject] = newCells;
-                        foreach (var cell in cells)
-                        {
-                            Vector2 newCellPos = Utils.floorVector2(cell.Position + direction);
-                            Cell newCell;
-                            if (!CellsList.TryGetValue(newCellPos, out newCell))
-                            {
-                                newCell = new Cell(newCellPos)
-                                {
-                                    Type = cell.Type,
-                                    GameObject = cell.GameObject
-                                };
-                                addNeighbours(newCell);
-                                CellsList.Add(newCellPos, newCell);
-                            }
-                            else
-                            {
-                                newCell.GameObject = cell.GameObject;
-                                newCell.Type = cell.Type;
-                            }
-                            newCells.Add(newCell);
+                    goType.AddOnTypeChangedEventHandler(this, (gameobject, type, newType) =>
+                     {
+                         var cells = GetCells(gameobject);
+                         foreach (var cell in cells)
+                         {
+                             cell.Type = newType;
+                         }
+                     });
+                    goType.AddOnPositionChangeEventHandler(this, (gameobject, oldPosition, newPosition) =>
+                     {
+                         var direction = Utils.floorVector2(newPosition - oldPosition);
+                         var cells = GetCells(gameobject);
+                         var newCells = new List<Cell>();
+                         CellsFromGameobject[gameobject] = newCells;
+                         foreach (var cell in cells)
+                         {
+                             Vector2 newCellPos = Utils.floorVector2(cell.Position + direction);
+                             Cell newCell;
+                             if (!CellsList.TryGetValue(newCellPos, out newCell))
+                             {
+                                 newCell = new Cell(newCellPos)
+                                 {
+                                     Type = cell.Type,
+                                     GameObject = cell.GameObject
+                                 };
+                                 addNeighbours(newCell);
+                                 CellsList.Add(newCellPos, newCell);
+                             }
+                             else
+                             {
+                                 newCell.GameObject = cell.GameObject;
+                                 newCell.Type = cell.Type;
+                             }
+                             newCells.Add(newCell);
 
-                            var oldCell = scanCell(cell.Position);
-                            cell.GameObject = oldCell.GameObject;
-                            cell.Type = oldCell.Type;
-                            if (cell.GameObject != null)
-                            {
-                                List<Cell> oldCellList = null;
-                                if (CellsFromGameobject.TryGetValue(cell.GameObject, out oldCellList))
-                                {
-                                    oldCellList.Add(cell);
-                                }
-                                else
-                                {
-                                    oldCellList = new List<Cell>() { cell };
-                                    CellsFromGameobject.Add(cell.GameObject, oldCellList);
-                                }
+                             var oldCell = scanCell(cell.Position);
+                             cell.GameObject = oldCell.GameObject;
+                             cell.Type = oldCell.Type;
+                             if (cell.GameObject != null)
+                             {
+                                 List<Cell> oldCellList = null;
+                                 if (CellsFromGameobject.TryGetValue(cell.GameObject, out oldCellList))
+                                 {
+                                     oldCellList.Add(cell);
+                                 }
+                                 else
+                                 {
+                                     oldCellList = new List<Cell>() { cell };
+                                     CellsFromGameobject.Add(cell.GameObject, oldCellList);
+                                 }
 
-                            }
-                        }
-                    })
+                             }
+                         }
+                     })
                     ;
                     currrentCell.GameObject = hit.gameObject;
                     break;
@@ -187,7 +201,7 @@ namespace Dasik.PathFinder
         /// <param name="leftBottomPoint">Левая нижняя точка выбранной местности</param>
         /// <param name="rightTopPoint">Правая верхняя точка выбранной иестности</param>
         /// <param name="callback">Уведомление о завершении операции</param>
-        public void RemoveArea(Vector2 leftBottomPoint, Vector2 rightTopPoint, OnOperationComplete callback=null)
+        public void RemoveArea(Vector2 leftBottomPoint, Vector2 rightTopPoint, OnOperationComplete callback = null)
         {
             Thread thr = new Thread(() =>
               {
