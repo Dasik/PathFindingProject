@@ -1,4 +1,5 @@
-﻿using System.Collections.Generic;
+﻿using System;
+using System.Collections.Generic;
 using System.Diagnostics;
 using UnityEngine;
 using Dasik.PathFinder;
@@ -9,7 +10,7 @@ public class PathManager : MonoBehaviour
     public PathFinding PathFinder;
     private Dictionary<GameObject, List<Vector2>> pathesDictionary = null;
     private bool pathSended = true;
-    private long pathFinderId = -1;
+    private List<long> pathFinderIds = new List<long>();
     // Use this for initialization
     void OnEnable()
     {
@@ -17,47 +18,44 @@ public class PathManager : MonoBehaviour
         //SetPath(new Vector2(-1015, 0));
     }
 
-    // Update is called once per frame
-    void Update()
-    {
-        if (!pathSended)
-        {
-            foreach (var item in pathesDictionary)
-            {
-                //item.Key.GetComponent<AgentScript>().ApplyPath(item.Value);
-                item.Key.SendMessage("ApplyPath", item.Value ?? new List<Vector2>());
-            }
-            pathSended = true;
-        }
-
-    }
-
+#if UNITY_EDITOR
+    private TimeSpan avgCalculationTime = TimeSpan.Zero;
+#endif
     public void SetPath(Vector2 targetPoint, double accuracy = 1d)
     {
-        PathFinder.closePathFindingThread(pathFinderId);
+        foreach (var pathFinderId in pathFinderIds)
+            PathFinder.ClosePathFindingThread(pathFinderId);
+        pathFinderIds.Clear();
         foreach (var item in ObjectGenerator.Instance.Agents)
         {
-            item.SendMessage("ApplyPath", new List<Vector2>());
+            item.ApplyPath(new List<Vector2>());
         }
-        //Debug.Log("starting path oprimize");
-        var dict = new Dictionary<GameObject, Vector2>();
-        foreach (var item in ObjectGenerator.Instance.Agents)
-        {
-            dict.Add(item, item.transform.position);
-        }
+
 #if UNITY_EDITOR
         Stopwatch sw = new Stopwatch();
         sw.Start();
 #endif
-        pathFinderId = PathFinder.GetPathes(dict, targetPoint, ((o, pathes) =>
-          {
+        foreach (var item in ObjectGenerator.Instance.Agents)
+        {
+            int foundedCount = 0;
+            var pathFinderId = PathFinder.GetPath(item.Position, targetPoint, (o, pathes) =>
+            {
 #if UNITY_EDITOR
-              sw.Stop();
-              Debug.Log("Path founded in: "+sw.Elapsed);
+                foundedCount++;
+
+                sw.Stop();
+                avgCalculationTime += sw.Elapsed;
+                avgCalculationTime= new TimeSpan(avgCalculationTime.Ticks / 2); ;
+                Debug.Log("Path founded in: " + sw.Elapsed);
+
 #endif
-              
-              pathesDictionary = pathes;
-              pathSended = false;
-          }), null, accuracy);
+                //pathesDictionary.Add(o, pathes);
+
+                o.ApplyPath(pathes ?? new List<Vector2>());
+                pathSended = false;
+            }, accuracy, item);
+            pathFinderIds.Add(pathFinderId);
+        }
+
     }
 }

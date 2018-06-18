@@ -13,7 +13,7 @@ public class ObjectGenerator : MonoBehaviour
     public Transform AgentsParent;
     public Transform ObstaclesParent;
     private readonly Random random = new Random();
-    public List<GameObject> Agents;
+    public List<AgentScript> Agents;
 
     void Start()
     {
@@ -54,7 +54,9 @@ public class ObjectGenerator : MonoBehaviour
     public void InitAgent(Vector3 position)
     {
         var obj = Instantiate(AgentPrefabForInit, position, Quaternion.identity, AgentsParent);
-        Agents.Add(obj);
+        var agent = obj.GetComponent<AgentScript>();
+        if (agent != null)
+            Agents.Add(agent);
     }
 
     public void InitPlayerObstacle(Vector2 position)

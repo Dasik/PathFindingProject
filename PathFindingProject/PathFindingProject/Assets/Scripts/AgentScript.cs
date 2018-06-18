@@ -13,22 +13,36 @@ public class AgentScript : MonoBehaviour
     public float DeltaSpeed = 5f;
     public float ErrorValue = 1f;
     private LineRenderer LineRenderer;
-    private static readonly Random random=new Random();
+    private static readonly Random random = new Random();
+    public Vector2 Position
+    {
+        get { return _rigidbody.position; }
+    }
+
     //public float ForceMultipler = 10f;
     // Use this for initialization
     void Start()
     {
         _rigidbody = GetComponent<Rigidbody2D>();
         LineRenderer = GetComponent<LineRenderer>();
-        MaxSpeed -= (float) ((random.NextDouble() * 2 - 1) * DeltaSpeed);
+        MaxSpeed -= (float)((random.NextDouble() * 2 - 1) * DeltaSpeed);
     }
 
     private Vector2 direction;
+    private bool wasRendered = true;
     void FixedUpdate()
     {
         if (_path == null)
             return;
-        if (_path.Count == 0 || _currentIndex >= _path.Count-1)
+        if (!wasRendered)
+        {
+            LineRenderer.positionCount = _path.Count;
+            for (int i = 0; i < _path.Count; i++)
+            {
+                LineRenderer.SetPosition(i, _path[i]);
+            }
+        }
+        if (_path.Count == 0 || _currentIndex >= _path.Count - 1)
         {
             _rigidbody.velocity = Vector2.zero;
             return;
@@ -49,18 +63,6 @@ public class AgentScript : MonoBehaviour
     {
         _currentIndex = 0;
         _path = path;
-        try
-        {
-
-            LineRenderer.positionCount = path.Count;
-            for (int i = 0; i < path.Count; i++)
-            {
-                LineRenderer.SetPosition(i, path[i]);
-            }
-        }
-        catch (Exception e)
-        {
-            Debug.Log(e);
-        }
+        wasRendered = false;
     }
 }

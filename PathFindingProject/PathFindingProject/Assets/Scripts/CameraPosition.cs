@@ -16,8 +16,9 @@ public class CameraPosition : MonoBehaviour
         Vector3 pos=Vector3.zero;
 	    foreach (var item in ObjectGenerator.Instance.Agents)
 	    {
-	        pos += item.transform.position;
-	    }
+	        pos.x += item.Position.x;
+            pos.y += item.Position.y;
+        }
 	    pos /= ObjectGenerator.Instance.Agents.Count;
 	    pos.z = zPos;
 	    _transform.position = pos;

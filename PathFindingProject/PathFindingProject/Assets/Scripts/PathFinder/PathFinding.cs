@@ -5,7 +5,7 @@ using System.Runtime.InteropServices;
 using System.Threading;
 using UnityEngine;
 using Debug = UnityEngine.Debug;
-using ThreadPriority = System.Threading.ThreadPriority;
+//using ThreadPriority = System.Threading.ThreadPriority;
 
 namespace Dasik.PathFinder
 {
@@ -46,14 +46,9 @@ namespace Dasik.PathFinder
             //List<long> localThreadIds = new List<long>();
             var thrID = Interlocked.Increment(ref _threadIdGenerator);
 
-            Thread worker = new Thread(() => GetPathesParallelWorking(objects, nearestObject, goalPosition, thrID,
-                callback, accuracy, param))
-            {
-                Priority = ThreadPriority.Normal,
-                Name = "PathesFinding"
-            };
+            TaskFactory.Add(() => GetPathesParallelWorking(objects, nearestObject, goalPosition, thrID,
+                callback, accuracy, param));
             _runnedThreads.Add(thrID);
-            worker.Start();
             return thrID;
         }
 
@@ -62,7 +57,7 @@ namespace Dasik.PathFinder
         {
             List<Vector2> nearestPath = new List<Vector2>();
             Debug.Log("Nearest: StartPos: " + objects[nearestObject] + "\tGoalPos: " + goalPosition);
-            var thrId=
+            var thrId =
                 GetPath<T>(objects[nearestObject], goalPosition, (ident, path) =>
                 {
                     if (path == null || path.Count == 0)
@@ -98,6 +93,7 @@ namespace Dasik.PathFinder
             {
                 if (!_runnedThreads.Contains(threadId))
                 {
+                    _runnedThreads.Remove(thrId);
                     foreach (var localThreadId in localThreadIds)
                     {
                         _runnedThreads.Remove(localThreadId);
@@ -107,6 +103,7 @@ namespace Dasik.PathFinder
                     return;
                 }
             }
+
 
             foreach (var item in result)
             {
@@ -176,29 +173,22 @@ namespace Dasik.PathFinder
                 }
             }
             var thrID = Interlocked.Increment(ref _threadIdGenerator);
-            Thread worker = new Thread(() => GetPathParallelWorking(startCell, goalCell, accuracy, callback, thrID, param))
-            {
-                Priority = ThreadPriority.Normal,
-                Name = "PathFinding"
-            };
+            TaskFactory.Add(() => GetPathParallelWorking(startCell, goalCell, accuracy, callback, thrID, param));
             _runnedThreads.Add(thrID);
-            worker.Start();
             return thrID;
         }
 
         private void GetPathParallelWorking<T>(Cell startCell, Cell goalCell, double accuracy,
             ReturnedPath<T> callback, long threadId, T param = null) where T : class
         {
-            //TODO: Add getting from cache
-
             bool closeThread = false;
             long lngth = 0;
             Dictionary<Cell, Node> closed = new Dictionary<Cell, Node>();
             Dictionary<Cell, Node> open = new Dictionary<Cell, Node>();
             List<Node> sortedOpen = new List<Node>();
+            Debug.Log("GetPathParallelWorking Started");
             try
             {
-
                 var PutToOpen = new Action<Node>(node =>
                 {
                     for (int i = 0; i < open.Count; i++)
@@ -229,13 +219,14 @@ namespace Dasik.PathFinder
                 };
                 start.f = start.g + start.h;
                 PutToOpen(start);
-                Debug.Log("PathFinding: StartPos: " + startCell.Position + "\tGoalPos: " + goalCell.Position +
-                          "\n This Thread Id: " + threadId + "\n Runned threads count: " + _runnedThreads.Count);
+                //Debug.Log("PathFinding: StartPos: " + startCell.Position + "\tGoalPos: " + goalCell.Position +
+                //"\n This Thread Id: " + threadId + "\n Runned threads count: " + _runnedThreads.Count);
                 while (open.Count != 0 && !closeThread)
                 {
                     closeThread = !_runnedThreads.Contains(threadId);
                     lngth = open.Count;
-                    //Thread.Sleep(1);
+                    if (closed.Count % 100 == 0)
+                        Thread.Sleep(10);
                     var x = PopFromOpen();
                     if (x.Cell.Equals(goalCell))
                     {
@@ -380,7 +371,7 @@ namespace Dasik.PathFinder
             _runnedThreads.Clear();
         }
 
-        public bool closePathFindingThread(long threadId)
+        public bool ClosePathFindingThread(long threadId)
         {
             return _runnedThreads.Remove(threadId);
         }
