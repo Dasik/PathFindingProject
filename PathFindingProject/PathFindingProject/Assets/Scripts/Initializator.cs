@@ -1,6 +1,8 @@
 ﻿using System.Collections;
+using System.Diagnostics;
 using Dasik.PathFinder;
 using UnityEngine;
+using Debug = UnityEngine.Debug;
 
 public class Initializator : MonoBehaviour
 {
@@ -20,10 +22,21 @@ public class Initializator : MonoBehaviour
         StartCoroutine(StartInitObstacles(ObstaclesArea.LeftBottomPoint,
                                             ObstaclesArea.RightTopPoint,
                                             ObstaclesCount));
-        CurrentMap.ScanArea(ScanArea.LeftBottomPoint,
-                            ScanArea.RightTopPoint);
-        CurrentMap.RemoveArea(RemoveArea.LeftBottomPoint,
-                            RemoveArea.RightTopPoint);
+#if UNITY_EDITOR
+	    Stopwatch sw = new Stopwatch();
+	    sw.Start();
+#endif
+		CurrentMap.ScanArea(ScanArea.LeftBottomPoint,
+                            ScanArea.RightTopPoint,callback:() =>
+	        {
+#if UNITY_EDITOR
+		        sw.Stop();
+		        Debug.Log("Scanned in: " + sw.Elapsed);
+#endif
+				Debug.Log("Scan complete");
+		        CurrentMap.RemoveArea(RemoveArea.LeftBottomPoint,
+			        RemoveArea.RightTopPoint);
+			});
         //CurrentMap.ScanArea(new Vector2(-10, -10),
         //            new Vector2(0, 0));
     }

@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using Dasik.PathFinder;
 using UnityEngine;
 using Random = System.Random;
 
@@ -7,7 +8,7 @@ public class AgentScript : MonoBehaviour
 {
 
     private Rigidbody2D _rigidbody;
-    private List<Vector2> _path;
+    private List<Cell> _path = new List<Cell>();
     private int _currentIndex;
     public float MaxSpeed = 10f;
     public float DeltaSpeed = 5f;
@@ -28,26 +29,27 @@ public class AgentScript : MonoBehaviour
         MaxSpeed -= (float)((random.NextDouble() * 2 - 1) * DeltaSpeed);
     }
 
-    private Vector2 direction;
     private bool wasRendered = true;
-    void FixedUpdate()
+	void Update()
+	{
+		if (!wasRendered)
+		{
+			LineRenderer.positionCount = _path.Count;
+			for (int i = 0; i < _path.Count; i++)
+			{
+				LineRenderer.SetPosition(i, _path[i].Position);
+			}
+		}
+	}
+
+	void FixedUpdate()
     {
-        if (_path == null)
-            return;
-        if (!wasRendered)
-        {
-            LineRenderer.positionCount = _path.Count;
-            for (int i = 0; i < _path.Count; i++)
-            {
-                LineRenderer.SetPosition(i, _path[i]);
-            }
-        }
         if (_path.Count == 0 || _currentIndex >= _path.Count - 1)
         {
             _rigidbody.velocity = Vector2.zero;
             return;
         }
-        direction = (_path[_currentIndex] - _rigidbody.position);
+        var direction = (_path[_currentIndex].Position - _rigidbody.position);
         if (direction.sqrMagnitude < ErrorValue)
             _currentIndex++;
         direction.Normalize();
@@ -59,7 +61,7 @@ public class AgentScript : MonoBehaviour
 
     }
 
-    public void ApplyPath(List<Vector2> path)
+    public void ApplyPath(List<Cell> path)
     {
         _currentIndex = 0;
         _path = path;
