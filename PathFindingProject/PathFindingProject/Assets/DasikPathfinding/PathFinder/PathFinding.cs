@@ -1,5 +1,6 @@
-﻿using System;
-using System.Collections.Concurrent;
+﻿using Assets.DasikPathfinding.PathFinder.Task;
+using Dasik.PathFinder.Task;
+using System;
 using System.Collections.Generic;
 using System.Threading;
 using UnityEngine;
@@ -10,31 +11,26 @@ namespace Dasik.PathFinder
 {
 	public class PathFinding : MonoBehaviour
 	{
-		public delegate void ReturnedPath<T>(T param, List<Cell> path);
-		public delegate void ReturnedPathes<T>(T param, IDictionary<T, List<Cell>> pathes);
+		public static PathFinding Instance;
 
 		private readonly ConcurrentHashSet<long> _runnedThreads = new ConcurrentHashSet<long>();
 		private long _threadIdGenerator = 0L;
 
-		/// <summary>
-		/// Bulk get patches. First find patch for closest point and then finding path from closest to others and combine this patches
-		/// </summary>
-		/// <typeparam name="T">Used for param only. It does not matter for calculation</typeparam>
-		/// <param name="objectsStartPosition">Key is a parameter necessary to determine the object for which the path was calculated. Value is start position of this object</param>
-		/// <param name="goalPosition">Goal position of path finding</param>
-		/// <param name="accuracy">Accuracy. Larger - faster, but path maybe not correct</param>
-		/// <returns>Dictionary, where key is param from <paramref name="objectsStartPosition"/> and value is path/></returns>
-		public IDictionary<T, List<Cell>> GetPathes<T>(Dictionary<T, Vector2> objectsStartPosition, Vector2 goalPosition, double accuracy = 1)
+		protected virtual void Start()
 		{
-			var thrId = Interlocked.Increment(ref _threadIdGenerator);
+			if (Instance != null)
+			{
+				Destroy(gameObject);
+				return;
+			}
 
-			_runnedThreads.Add(thrId);
-			IDictionary<T, List<Cell>> result = null;
-			GetPathesInternalTask<T>(objectsStartPosition, goalPosition, thrId,
-				(param, pathes) => { result = pathes; }, accuracy, default(T));
-			return result;
+			Instance = this;
 		}
 
+		private void OnDestroy()
+		{
+			_runnedThreads.Clear();
+		}
 
 		/// <summary>
 		/// Bulk get patches. First find patch for closest point and then finding path from closest to others and combine this patches
@@ -46,20 +42,18 @@ namespace Dasik.PathFinder
 		/// <param name="param">Parameter to determine calculation operation. Used in callback</param>
 		/// <param name="accuracy">Accuracy. Larger - faster, but path maybe not correct</param>
 		/// <returns>Thread id for cancelation calculation</returns>
-		public long GetPathesAsync<T>(Dictionary<T, Vector2> objectsStartPosition, Vector2 goalPosition,
-			ReturnedPathes<T> callback, T param = default(T), double accuracy = 1)
+		public BulkPathTask<T> GetPathesAsync<T>(IDictionary<T, Vector2> objectsStartPosition, Vector2 goalPosition, double accuracy = 1)
 		{
 			var thrId = Interlocked.Increment(ref _threadIdGenerator);
-
+			var bulkPathTask = new BulkPathTask<T>(thrId, this);
 			_runnedThreads.Add(thrId);
-			TaskFactory.Add(() => GetPathesInternalTask(objectsStartPosition, goalPosition, thrId,
-				callback, accuracy, param));
-			return thrId;
+			TaskFactory.Add(() => GetPathesInternalTask(objectsStartPosition, goalPosition, accuracy, bulkPathTask));
+			return bulkPathTask;
 		}
 
-		private void GetPathesInternalTask<T>(Dictionary<T, Vector2> objectsStartPosition, Vector2 goalPosition, long threadId,
-			ReturnedPathes<T> callback, double accuracy, T param)
+		protected virtual void GetPathesInternalTask<T>(IDictionary<T, Vector2> objectsStartPosition, Vector2 goalPosition, double accuracy, BulkPathTask<T> pathTask)
 		{
+			pathTask.Run();
 			T nearestObject = default(T);
 			var nearestDistance = float.MaxValue;
 			foreach (var item in objectsStartPosition)
@@ -72,105 +66,76 @@ namespace Dasik.PathFinder
 
 			if (nearestObject == null)
 			{
-				_runnedThreads.Remove(threadId);
-				if (callback != null)
-				{
-					callback(param, null);
-				}
+				pathTask.Fail();
 				return;
 			}
 
-			var result = new ConcurrentDictionary<T, List<Cell>>();
-			var nearestThrId =
-				GetPathAsync(objectsStartPosition[nearestObject], goalPosition, (identParam, path) =>
-				{
-					result.TryAdd(identParam, path);
-				}, accuracy, nearestObject);
+			var result = new Dictionary<T, IEnumerable<Cell>>();
+			var nearestTask = GetPathAsync(objectsStartPosition[nearestObject], goalPosition, accuracy);
+			pathTask.ChildTasks.Add(nearestTask);
 
-
-			List<long> localThreadIds = new List<long>();
+			var localTasks = new Dictionary<T, SinglePathTask>();
 			foreach (var item in objectsStartPosition)
 			{
-				if (!item.Key.Equals(nearestObject))
-					localThreadIds.Add(
-						GetPathAsync(item.Value, objectsStartPosition[nearestObject], (identParam, path) =>
-						{
-							result.TryAdd(identParam, path);
-						}, accuracy, item.Key));
+				if (item.Key.Equals(nearestObject))
+					continue;
+				var localTask = GetPathAsync(item.Value, objectsStartPosition[nearestObject], accuracy);
+				localTasks.Add(item.Key, localTask);
+				pathTask.ChildTasks.Add(localTask);
 			}
 
-			while (result.Count!=objectsStartPosition.Count)
+			var nearestPath = nearestTask.WaitForResult();
+			if (nearestTask.Status == PathTaskStatus.Faulted)
 			{
-				if (!_runnedThreads.Contains(nearestThrId) && result[nearestObject].Count == 0)
-				{
-					callback(param, new ConcurrentDictionary<T, List<Cell>>());
-					_runnedThreads.Remove(threadId);
-				}
+				pathTask.Fail();
+				return;
+			}
 
-				if (!_runnedThreads.Contains(threadId))//check if task was stoped
+			foreach (var localTask in localTasks)
+			{
+				var localTaskResult = localTask.Value.WaitForResult();
+				if (pathTask.Status == PathTaskStatus.Canceled)
+					return;
+				if (localTask.Value.Status == PathTaskStatus.Faulted)
 				{
-					_runnedThreads.Remove(nearestThrId);
-					foreach (var localThreadId in localThreadIds)
-					{
-						_runnedThreads.Remove(localThreadId);
-					}
+					pathTask.Fail();
 					return;
 				}
+
+				((List<Cell>)localTaskResult).AddRange(nearestPath);
+				result.Add(localTask.Key, localTaskResult);
 			}
 
-			foreach (var item in result)
-			{
-				if (!item.Key.Equals(nearestObject))
-					item.Value.AddRange(result[nearestObject]);
-			}
-			if (callback != null)
-			{
-				callback(param, result);
-			}
-			_runnedThreads.Remove(threadId);
+			if (pathTask.Status == PathTaskStatus.Canceled)
+				return;
+			result.Add(nearestObject, nearestPath);
+			pathTask.Complete(result);
 		}
 
-		public List<Cell> GetPath<T>(Vector2 startPosition, Vector2 goalPosition,
-			 double accuracy = 1)
+		public SinglePathTask GetPathAsync(Vector2 startPosition, Vector2 goalPosition, double accuracy = 1)
 		{
 			var thrId = Interlocked.Increment(ref _threadIdGenerator);
 			_runnedThreads.Add(thrId);
-			List<Cell> result = null;
-			GetPathInternalTask(startPosition, goalPosition, accuracy,
-				((param, path) => result = path), thrId, default(T));
-
-			return result;
+			var pathTask = new SinglePathTask(thrId, this);
+			TaskFactory.Add(() => GetPathInternalTask(startPosition, goalPosition, accuracy, pathTask));
+			return pathTask;
 		}
 
-		public long GetPathAsync<T>(Vector2 startPosition, Vector2 goalPosition,
-			ReturnedPath<T> callback, double accuracy = 1, T param = default(T))
-		{
-			var thrId = Interlocked.Increment(ref _threadIdGenerator);
-			_runnedThreads.Add(thrId);
-			TaskFactory.Add(() => GetPathInternalTask(startPosition, goalPosition, accuracy, callback, thrId, param));
-			return thrId;
-		}
-
-		private void GetPathInternalTask<T>(Vector2 startPosition, Vector2 goalPosition, double accuracy,
-			ReturnedPath<T> callback, long threadId, T param)
+		private void GetPathInternalTask(Vector2 startPosition, Vector2 goalPosition, double accuracy, SinglePathTask pathTask)
 		{
 			var startCell = Map.Instance.GetCell(startPosition);
 			var goalCell = Map.Instance.GetCell(goalPosition);
 			if (startCell == null)
 			{
 				Debug.Log("Start position " + startPosition + " not scanned");
-				if (callback != null)
-					callback(param, new List<Cell>());
-				_runnedThreads.Remove(threadId);
+				pathTask.Fail();
 				return;
 			}
 
 			if (goalCell == null)
 			{
 				Debug.Log("Goal position " + goalPosition + " not scanned");
-				if (callback != null)
-					callback(param, new List<Cell>());
-				_runnedThreads.Remove(threadId);
+				pathTask.Fail();
 				return;
 			}
 
@@ -205,14 +170,11 @@ namespace Dasik.PathFinder
 				}
 				if (goalCell.Passability == Cell.MIN_PASSABILITY)
 				{
-					Debug.Log("goal cell in obstacle");
-					if (callback != null)
-						callback(param, new List<Cell>());
-					_runnedThreads.Remove(threadId);
+					Debug.Log("goal cell is obstacle. Cell:" + goalCell.Position);
+					pathTask.Fail();
 					return;
 				}
 			}
-			bool closeThread = false;
 			Dictionary<Cell, Node> closed = new Dictionary<Cell, Node>();
 			Dictionary<Cell, Node> open = new Dictionary<Cell, Node>();
 			List<Node> sortedOpen = new List<Node>();//todo: change to sorted list
@@ -246,15 +208,16 @@ namespace Dasik.PathFinder
 				};
 				start.f = start.g + start.h;
 				PutToOpen(start);
-				while (open.Count != 0 && !closeThread)
+				while (open.Count != 0)
 				{
-					closeThread = !_runnedThreads.Contains(threadId);
+					if (pathTask.Status == PathTaskStatus.Canceled)
+						return;
 					//if (closed.Count % 100 == 0)
 					//    Thread.Sleep(10);
 					var x = PopFromOpen();
 					if (x.Cell.Equals(goalCell))
 					{
-						callback(param, constructPath(x));
+						pathTask.Complete(constructPath(x));
 						return;
 					}
 					closed.Add(x.Cell, x);
@@ -297,14 +260,13 @@ namespace Dasik.PathFinder
 					}
 				}
 				Debug.Log("Goal not founded: StartPos: " + startCell.Position + "\tGoalPos: " + goalCell.Position);
-				callback(param, new List<Cell>());
+				pathTask.Fail();
 			}
 			finally
 			{
 				open.Clear();
 				sortedOpen.Clear();
 				closed.Clear();
-				_runnedThreads.Remove(threadId);
 			}
 		}
 
@@ -320,12 +282,7 @@ namespace Dasik.PathFinder
 			return result;
 		}
 
-		private void OnDestroy()
-		{
-			_runnedThreads.Clear();
-		}
-
-		public bool ClosePathFindingThread(long threadId)
+		internal bool ClosePathFindingThread(long threadId)
 		{
 			return _runnedThreads.Remove(threadId);
 		}

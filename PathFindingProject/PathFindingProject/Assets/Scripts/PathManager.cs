@@ -1,5 +1,6 @@
-﻿using Dasik.PathFinder;
-using System;
+﻿using Assets.DasikPathfinding.PathFinder.Task;
+using Dasik.PathFinder;
+using Dasik.PathFinder.Task;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
@@ -9,7 +10,8 @@ using Debug = UnityEngine.Debug;
 public class PathManager : MonoBehaviour
 {
 	public PathFinding PathFinder;
-	private List<long> pathFinderIds = new List<long>();
+	private BulkPathTask<AgentScript> bulkPathFinderTask;
+	private Dictionary<AgentScript, SinglePathTask> pathFinderTasks;
 	public bool useBulkPathFinding = true;
 
 	// Use this for initialization
@@ -18,55 +20,99 @@ public class PathManager : MonoBehaviour
 		//Debug.Log("starting path oprimize");
 		//SetPath(new Vector2(-1015, 0));
 	}
-	
+
+	public void Update()
+	{
+		if (useBulkPathFinding)
+		{
+			if (bulkPathFinderTask != null && bulkPathFinderTask.Status == PathTaskStatus.Completed)
+			{
+#if UNITY_EDITOR
+				sw.Stop();
+				Debug.Log("Path founded in: " + sw.Elapsed);
+#endif
+				foreach (var path in bulkPathFinderTask.Path)
+				{
+					path.Key.ApplyPath(path.Value);
+				}
+
+				bulkPathFinderTask = null;
+			}
+		}
+		else
+		{
+			if (pathFinderTasks==null)
+				return;
+
+			var endedTasks = new List<AgentScript>();
+			foreach (var singlePathTask in pathFinderTasks)
+			{
+				if (singlePathTask.Value.Status == PathTaskStatus.Completed)
+				{
+					endedTasks.Add(singlePathTask.Key);
+					singlePathTask.Key.ApplyPath(singlePathTask.Value.Path ?? new List<Cell>());
+				}
+			}
+
+			foreach (var endedTask in endedTasks)
+			{
+				pathFinderTasks.Remove(endedTask);
+			}
+
+			if (pathFinderTasks.Count == 0)
+			{
+#if UNITY_EDITOR
+				sw.Stop();
+				Debug.Log("Path founded in: " + sw.Elapsed);
+#endif
+				pathFinderTasks = null;
+			}
+		}
+	}
+
+
+#if UNITY_EDITOR
+	private Stopwatch sw;
+#endif
 	public void SetPath(Vector2 targetPoint, double accuracy = 1d)
 	{
-		foreach (var pathFinderId in pathFinderIds)
-			PathFinder.ClosePathFindingThread(pathFinderId);
-		pathFinderIds.Clear();
+		if (bulkPathFinderTask != null)
+		{
+			bulkPathFinderTask.Dispose();
+			bulkPathFinderTask = null;
+		}
+
+		if (pathFinderTasks != null)
+		{
+			foreach (var singlePathTask in pathFinderTasks)
+			{
+				singlePathTask.Value.Dispose();
+			}
+
+			pathFinderTasks = null;
+		}
+
 		foreach (var item in ObjectGenerator.Instance.Agents)
 		{
 			item.ApplyPath(new List<Cell>());
 		}
 
 #if UNITY_EDITOR
-		Stopwatch sw = new Stopwatch();
+		sw = new Stopwatch();
 		sw.Start();
 #endif
 		if (useBulkPathFinding)
 		{
 			var objectsStartPosition = ObjectGenerator.Instance.Agents.ToDictionary(agent => agent, agent => agent.Position);
-			var pathFinderId = PathFinder.GetPathesAsync(objectsStartPosition, targetPoint, (param, pathes) =>
-			 {
-#if UNITY_EDITOR
-				sw.Stop();
-				 Debug.Log("Path founded in: " + sw.Elapsed);
-#endif
-				 foreach (var path in pathes)
-				 {
-					 path.Key.ApplyPath(path.Value);
-				 }
-			 });
-			pathFinderIds.Add(pathFinderId);
+			bulkPathFinderTask = PathFinder.GetPathesAsync(objectsStartPosition, targetPoint);
 		}
 		else
 		{
-			int foundedCount = 0;
+			pathFinderTasks=new Dictionary<AgentScript, SinglePathTask>();
 			foreach (var item in ObjectGenerator.Instance.Agents)
 			{
-				var pathFinderId = PathFinder.GetPathAsync(item.Position, targetPoint, (o, pathes) =>
-				{
-#if UNITY_EDITOR
-					foundedCount++;
-					if (foundedCount == ObjectGenerator.Instance.Agents.Count)
-					{
-						sw.Stop();
-						Debug.Log("Path founded in: " + sw.Elapsed);
-					}
-#endif
-					o.ApplyPath(pathes ?? new List<Cell>());
-				}, accuracy, item);
-				pathFinderIds.Add(pathFinderId);
+				var singlePathTask = PathFinder.GetPathAsync(item.Position, targetPoint, accuracy);
+				pathFinderTasks.Add(item, singlePathTask);
 			}
 		}
 	}

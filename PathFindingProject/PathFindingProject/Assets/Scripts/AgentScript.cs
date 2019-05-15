@@ -61,10 +61,11 @@ public class AgentScript : MonoBehaviour
 
     }
 
-    public void ApplyPath(List<Cell> path)
+    public void ApplyPath(IEnumerable<Cell> path)
     {
         _currentIndex = 0;
-        _path = path;
+	    _path.Clear();
+	    _path.AddRange(path);
         wasRendered = false;
     }
 }
