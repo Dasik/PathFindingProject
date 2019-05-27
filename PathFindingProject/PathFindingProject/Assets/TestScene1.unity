@@ -1336,7 +1336,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   PathFinder: {fileID: 768618338}
-  useBulkPathFinding: 0
+  useBulkPathFinding: 1
 --- !u!4 &1239108612
 Transform:
   m_ObjectHideFlags: 0

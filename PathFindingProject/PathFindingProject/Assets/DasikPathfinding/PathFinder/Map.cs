@@ -383,6 +383,16 @@ namespace Dasik.PathFinder
 			var result = CellTree.FindValuesAt(aabb);
 			return result;
 		}
+
+		internal List<Cell> GetCells(IEnumerable<Vector2> cellPositions)
+		{
+			List<Cell> result=new List<Cell>();
+			foreach (var cellPosition in cellPositions)
+			{
+				result.Add(GetCell(cellPosition));
+			}
+			return result;
+		}
 	}
 }
 

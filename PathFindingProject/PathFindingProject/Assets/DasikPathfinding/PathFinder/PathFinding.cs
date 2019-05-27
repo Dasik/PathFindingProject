@@ -53,63 +53,178 @@ namespace Dasik.PathFinder
 
 		protected virtual void GetPathesInternalTask<T>(IDictionary<T, Vector2> objectsStartPosition, Vector2 goalPosition, double accuracy, BulkPathTask<T> pathTask)
 		{
-			pathTask.Run();
-			T nearestObject = default(T);
-			var nearestDistance = float.MaxValue;
-			foreach (var item in objectsStartPosition)
+			IDictionary<T, IEnumerable<Cell>> result = new Dictionary<T, IEnumerable<Cell>>();
+			var startCells = new Dictionary<T, Cell>();
+			foreach (var startPos in objectsStartPosition)
 			{
-				var dist = Vector2.SqrMagnitude(goalPosition - item.Value);
-				if (dist >= nearestDistance) continue;
-				nearestDistance = dist;
-				nearestObject = item.Key;
-			}
-
-			if (nearestObject == null)
-			{
-				pathTask.Fail();
-				return;
-			}
-
-			var result = new Dictionary<T, IEnumerable<Cell>>();
-			var nearestTask = GetPathAsync(objectsStartPosition[nearestObject], goalPosition, accuracy);
-			pathTask.ChildTasks.Add(nearestTask);
-
-			var localTasks = new Dictionary<T, SinglePathTask>();
-			foreach (var item in objectsStartPosition)
-			{
-				if (item.Key.Equals(nearestObject))
-					continue;
-				var localTask = GetPathAsync(item.Value, objectsStartPosition[nearestObject], accuracy);
-				localTasks.Add(item.Key, localTask);
-				pathTask.ChildTasks.Add(localTask);
-			}
-
-			var nearestPath = nearestTask.WaitForResult();
-			if (nearestTask.Status == PathTaskStatus.Faulted)
-			{
-				pathTask.Fail();
-				return;
-			}
-
-			foreach (var localTask in localTasks)
-			{
-				var localTaskResult = localTask.Value.WaitForResult();
-				if (pathTask.Status == PathTaskStatus.Canceled)
-					return;
-				if (localTask.Value.Status == PathTaskStatus.Faulted)
+				var startCell = Map.Instance.GetCell(startPos.Value);
+				if (startCell == null)
 				{
+					Debug.LogWarning("Start positions " + startPos.Value + " not scanned");
 					pathTask.Fail();
 					return;
 				}
+				startCells.Add(startPos.Key, startCell);
+			}
+			var goalCell = Map.Instance.GetCell(goalPosition);
 
-				((List<Cell>)localTaskResult).AddRange(nearestPath);
-				result.Add(localTask.Key, localTaskResult);
+			if (goalCell == null)
+			{
+				Debug.LogWarning("Goal position " + goalPosition + " not scanned");
+				pathTask.Fail();
+				return;
 			}
 
-			if (pathTask.Status == PathTaskStatus.Canceled)
-				return;
-			result.Add(nearestObject, nearestPath);
-			pathTask.Complete(result);
+			if (goalCell.Passability == Cell.MIN_PASSABILITY)
+			{
+				foreach (var item in goalCell.Neighbours)
+				{
+					if (item.Key.Passability > Cell.MIN_PASSABILITY)
+					{
+						goalCell = item.Key;
+						break;
+					}
+				}
+				if (goalCell.Passability == Cell.MIN_PASSABILITY)
+				{
+					Debug.LogWarning("goal cell is obstacle. Cell:" + goalCell.Position);
+					pathTask.Fail();
+					return;
+				}
+			}
+			var pathesCache = new Dictionary<Cell, IEnumerable<Cell>>();
+
+			var closed = new Dictionary<Cell, Node>();
+			var open = new Dictionary<Cell, Node>();
+			var sortedOpen = new List<Node>();//todo: change to sorted list
+			try
+			{
+				var PutToOpen = new Action<Node>(node =>
+				{
+					for (int i = 0; i < open.Count; i++)
+					{
+						if (sortedOpen[i].f < node.f) continue;
+						sortedOpen.Insert(i, node);
+						open.Add(node.Cell, node);
+						return;
+					}
+
+					sortedOpen.Insert(open.Count, node);
+					open.Add(node.Cell, node);
+				});
+
+				var PopFromOpen = new Func<Node>(() =>
+				{
+					var popItem = sortedOpen[0];
+					sortedOpen.RemoveAt(0);
+					open.Remove(popItem.Cell);
+					return popItem;
+				});
+				foreach (var startPair in startCells)
+				{
+					open.Clear();
+					sortedOpen.Clear();
+					closed.Clear();
+					var startCell = startPair.Value;
+					var start = new Node(startCell)
+					{
+						g = 0d,
+						h = Utils.GetDistance(goalCell.Position, startCell.Position) * accuracy
+					};
+					start.f = start.g + start.h;
+					PutToOpen(start);
+					while (open.Count != 0)
+					{
+						if (pathTask.Status == PathTaskStatus.Canceled)
+							return;
+						//if (closed.Count % 100 == 0)
+						//    Thread.Sleep(10);
+						var x = PopFromOpen();
+						if (pathesCache.ContainsKey(x.Cell))
+						{
+							var cachedPath = pathesCache[x.Cell];
+							ConstructPath(x.Parent, pathesCache, (ImmutableStack<Cell>)cachedPath);
+							result.Add(startPair.Key, pathesCache[startCell]);
+							break;
+						}
+						if (x.Cell.Equals(goalCell))
+						{
+							ConstructPath(x, pathesCache);
+							result.Add(startPair.Key, pathesCache[startCell]);
+							break;
+						}
+
+						closed.Add(x.Cell, x);
+						var pathFounded = false;
+						foreach (var yy in x.Cell.Neighbours)
+						{
+							if (pathesCache.ContainsKey(yy.Key))
+							{
+								var cachedPath = pathesCache[yy.Key];
+								ConstructPath(x, pathesCache, (ImmutableStack<Cell>)cachedPath);
+								result.Add(startPair.Key, pathesCache[startCell]);
+								pathFounded = true;
+								break;
+							}
+
+							if (yy.Key.Passability == Cell.MIN_PASSABILITY)
+							{
+								continue;
+							}
+
+							//если текущий сосед содержится в списке просмотренных вершин, то пропустить его
+							if (closed.ContainsKey(yy.Key)) continue;
+							bool tentativeIsBetter = true;
+							//var tentativeGScore = x.g + 1d;//1d-расстояние между х и соседом
+							var tentativeGScore = x.g + yy.Value / (yy.Key.Passability / Cell.MAX_PASSABILITY_F);
+							//Получаем y из open
+
+							Node y;
+							if (open.TryGetValue(yy.Key, out y))
+							{
+								if (tentativeGScore < y.g)
+								{
+									open.Remove(yy.Key);
+									sortedOpen.Remove(y);
+								}
+								else
+									tentativeIsBetter = false;
+							}
+							else
+							{
+								y = new Node(yy.Key);
+							}
+
+							if (tentativeIsBetter)
+							{
+								y.Parent = x;
+								y.g = tentativeGScore;
+								y.h = Utils.GetDistance(y.Cell.Position, goalCell.Position) * accuracy;
+								y.f = y.g + y.h;
+								PutToOpen(y);
+							}
+						}
+						if (pathFounded)
+							break;
+					}
+					if (result.ContainsKey(startPair.Key)) continue;
+
+					Debug.LogWarning("Goal not founded: StartPos: " + startCell.Position + "\tGoalPos: " + goalCell.Position);
+					pathTask.Fail();
+				}
+				pathTask.Complete(result);
+			}
+			catch (Exception ex)
+			{
+				pathTask.Fail();
+				throw new Exception(ex.Message, ex);
+			}
+			finally
+			{
+				open.Clear();
+				sortedOpen.Clear();
+				closed.Clear();
+			}
 		}
 
 		public SinglePathTask GetPathAsync(Vector2 startPosition, Vector2 goalPosition, double accuracy = 1)
@@ -127,14 +242,14 @@ namespace Dasik.PathFinder
 			var goalCell = Map.Instance.GetCell(goalPosition);
 			if (startCell == null)
 			{
-				Debug.Log("Start position " + startPosition + " not scanned");
+				Debug.LogWarning("Start position " + startPosition + " not scanned");
 				pathTask.Fail();
 				return;
 			}
 
 			if (goalCell == null)
 			{
-				Debug.Log("Goal position " + goalPosition + " not scanned");
+				Debug.LogWarning("Goal position " + goalPosition + " not scanned");
 				pathTask.Fail();
 				return;
 			}
@@ -170,7 +285,7 @@ namespace Dasik.PathFinder
 				}
 				if (goalCell.Passability == Cell.MIN_PASSABILITY)
 				{
-					Debug.Log("goal cell is obstacle. Cell:" + goalCell.Position);
+					Debug.LogWarning("goal cell is obstacle. Cell:" + goalCell.Position);
 					pathTask.Fail();
 					return;
 				}
@@ -217,7 +332,7 @@ namespace Dasik.PathFinder
 					var x = PopFromOpen();
 					if (x.Cell.Equals(goalCell))
 					{
-						pathTask.Complete(constructPath(x));
+						pathTask.Complete(ConstructPath(x));
 						return;
 					}
 					closed.Add(x.Cell, x);
@@ -259,8 +374,13 @@ namespace Dasik.PathFinder
 						}
 					}
 				}
-				Debug.Log("Goal not founded: StartPos: " + startCell.Position + "\tGoalPos: " + goalCell.Position);
+				Debug.LogWarning("Goal not founded: StartPos: " + startCell.Position + "\tGoalPos: " + goalCell.Position);
 				pathTask.Fail();
+			}
+			catch (Exception ex)
+			{
+				pathTask.Fail();
+				throw new Exception(ex.Message, ex);
 			}
 			finally
 			{
@@ -270,13 +390,32 @@ namespace Dasik.PathFinder
 			}
 		}
 
-		private List<Cell> constructPath(Node node)
+		private static Dictionary<Cell, IEnumerable<Cell>> ConstructPath(Node node, Dictionary<Cell, IEnumerable<Cell>> into, ImmutableStack<Cell> currentStack = null)
 		{
-			var result = new List<Cell>();
+			if (into == null)
+				into = new Dictionary<Cell, IEnumerable<Cell>>();
+			if (currentStack == null)
+				currentStack = ImmutableStack<Cell>.Empty;
+			if (node == null)
+				return into;
+			var newStack = currentStack.Push(node.Cell);
+			//if (into.ContainsKey(node.Cell))
+			//	into[node.Cell] = newStack;
+			//else
+			into.Add(node.Cell, newStack);
+			if (node.Parent != null)
+				ConstructPath(node.Parent, into, newStack);
+
+			return into;
+		}
+
+		private static ImmutableStack<Cell> ConstructPath(Node node)
+		{
+			var result = ImmutableStack<Cell>.Empty;
 			var currentNode = node;
 			while (currentNode != null)
 			{
-				result.Insert(0, currentNode.Cell);
+				result = result.Push(currentNode.Cell);
 				currentNode = currentNode.Parent;
 			}
 			return result;
@@ -296,10 +435,26 @@ namespace Dasik.PathFinder
 		public double h;
 		public double f;
 
-		public Node(Cell cell, Node parent = null)
+		public Node(Cell cell)
 		{
 			Cell = cell;
-			Parent = parent;
 		}
 	}
+
+	//internal class Node : Node<object>
+	//{
+	//	public new Node Parent;
+	//	public Node(Cell cell) : base(cell)
+	//	{
+	//	}
+	//}
+
+	//internal class LeafNode<T> : Node<T>
+	//{
+	//	public T Obj;
+
+	//	public LeafNode(Cell cell) : base(cell)
+	//	{
+	//	}
+	//}
 }
