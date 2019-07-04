@@ -158,4 +158,4 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   Ignored: 0
   Passability: 0
-  ChangesUpdateTime: 0.1
+  ChangesUpdateTime: 999999

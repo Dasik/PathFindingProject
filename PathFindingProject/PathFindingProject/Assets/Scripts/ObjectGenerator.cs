@@ -24,8 +24,8 @@ public class ObjectGenerator : MonoBehaviour
     public void InitAgents(Vector2 leftBottomPoint, Vector2 rightTopPoint, int objectsCount)
     {
         Vector2 step = (rightTopPoint - leftBottomPoint) / (float)Math.Sqrt(objectsCount);
-        leftBottomPoint += step;
-        for (Vector2 pos = leftBottomPoint; pos.x < rightTopPoint.x; pos.x += step.x)
+		//leftBottomPoint += step;
+		for (Vector2 pos = leftBottomPoint; pos.x < rightTopPoint.x; pos.x += step.x)
             for (pos.y = leftBottomPoint.y; pos.y < rightTopPoint.y; pos.y += step.y)
             {
                 InitAgent(new Vector3(pos.x, pos.y, z));

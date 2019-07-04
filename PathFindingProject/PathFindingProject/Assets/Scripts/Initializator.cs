@@ -9,17 +9,21 @@ public class Initializator : MonoBehaviour
     public int AgentsCount = 50;
     public int ObstaclesCount = 50;
     public Map CurrentMap;
-    public AreaRange AgentsArea;
-    public AreaRange ObstaclesArea;
+	public AreaRange AgentsArea1;
+	public AreaRange AgentsArea2;
+	public AreaRange ObstaclesArea;
     public AreaRange ScanArea;
     public AreaRange RemoveArea;
 
     void Start()
     {
-        StartCoroutine(StartInitAgents(AgentsArea.LeftBottomPoint,
-                                            AgentsArea.RightTopPoint,
-                                            AgentsCount));
-        StartCoroutine(StartInitObstacles(ObstaclesArea.LeftBottomPoint,
+	    StartCoroutine(StartInitAgents(AgentsArea1.LeftBottomPoint,
+		    AgentsArea1.RightTopPoint,
+		    AgentsCount/2));
+	    StartCoroutine(StartInitAgents(AgentsArea2.LeftBottomPoint,
+		    AgentsArea2.RightTopPoint,
+		    AgentsCount/2));
+		StartCoroutine(StartInitObstacles(ObstaclesArea.LeftBottomPoint,
                                             ObstaclesArea.RightTopPoint,
                                             ObstaclesCount));
 #if UNITY_EDITOR

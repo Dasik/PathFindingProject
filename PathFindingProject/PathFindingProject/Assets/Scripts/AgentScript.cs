@@ -34,8 +34,10 @@ public class AgentScript : MonoBehaviour
 	{
 		if (!wasRendered)
 		{
-			LineRenderer.positionCount = _path.Count;
-			for (int i = 0; i < _path.Count; i++)
+			if (_path==null||_path.Count==0)
+				return;
+			LineRenderer.positionCount = _path.Count-1;
+			for (int i = 0; i < _path.Count-1; i++)
 			{
 				LineRenderer.SetPosition(i, _path[i].Position);
 			}

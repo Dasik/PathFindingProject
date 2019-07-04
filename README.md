@@ -6,6 +6,7 @@ This is my diploma work
 - Non-linear grid! You can reduce tiles count without loose accuracy. 
 - Simple usage. 
 - Work with tiles with different passability.
+- Bulk pathfinding. Many start positions, one finish.
 
 ## How to use
 
@@ -30,7 +31,7 @@ public class PathManager : MonoBehaviour
 
 	public void Update()
 	{
-// pathfinding can work with bulk operations. Or try to work:)    
+// pathfinding can work with bulk operations.    
 		if (useBulkPathFinding)
 		{
 			if (bulkPathFinderTask != null && bulkPathFinderTask.Status == PathTaskStatus.Completed)

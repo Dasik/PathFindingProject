@@ -35,9 +35,9 @@ namespace Dasik.PathFinder
 
 		private Color randomizeColor(Color color)
 		{
-			color.r += ((float)_random.NextDouble() * 0.4f) - 0.2f;
-			color.g += ((float)_random.NextDouble() * 0.4f) - 0.2f;
-			color.b += ((float)_random.NextDouble() * 0.4f) - 0.2f;
+			color.r += ((float)_random.NextDouble() * 0.3f) - 0.15f;
+			color.g += ((float)_random.NextDouble() * 0.3f) - 0.15f;
+			color.b += ((float)_random.NextDouble() * 0.3f) - 0.15f;
 			return color;
 		}
 #endif
@@ -112,12 +112,12 @@ namespace Dasik.PathFinder
 #if UNITY_EDITOR
 					Color cellColor = Color.red;
 					if (currrentCell.Passability <= Cell.MIN_PASSABILITY)
-						cellColor = Color.black;
+						cellColor = Color.red;
 					else if (currrentCell.Passability < Cell.MAX_PASSABILITY)
 						cellColor = Color.yellow;
 					else
 						cellColor = Color.white;
-					cellColor.a = 0.5f;
+					//cellColor.a = 0.1f;
 					currrentCell.Color = randomizeColor(cellColor);
 #endif
 					AddCellToTree(currrentCell);
@@ -161,12 +161,12 @@ namespace Dasik.PathFinder
 #if UNITY_EDITOR
 					Color cellColor = Color.red;
 					if (currrentCell.Passability <= Cell.MIN_PASSABILITY)
-						cellColor = Color.black;
+						cellColor = Color.red;
 					else if (currrentCell.Passability < Cell.MAX_PASSABILITY)
 						cellColor = Color.yellow;
 					else
 						cellColor = Color.white;
-					cellColor.a = 0.5f;
+					//cellColor.a = 0.5f;
 					currrentCell.Color = randomizeColor(cellColor);
 #endif
 					resultCells.Add(currrentCell);

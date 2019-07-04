@@ -192,7 +192,7 @@ Camera:
   far clip plane: 1000
   field of view: 60
   orthographic: 1
-  orthographic size: 100
+  orthographic size: 300
   m_Depth: -1
   m_CullingMask:
     serializedVersion: 2
@@ -1132,18 +1132,21 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 75a8a611181e15245887a67f2bb4454d, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  AgentsCount: 100
+  AgentsCount: 200
   ObstaclesCount: 2000
   CurrentMap: {fileID: 768618341}
-  AgentsArea:
-    LeftBottomPoint: {x: 50, y: -200}
-    RightTopPoint: {x: 105, y: 200}
+  AgentsArea1:
+    LeftBottomPoint: {x: -1090, y: -180}
+    RightTopPoint: {x: -1001, y: 180}
+  AgentsArea2:
+    LeftBottomPoint: {x: 1, y: -180}
+    RightTopPoint: {x: 140, y: 180}
   ObstaclesArea:
-    LeftBottomPoint: {x: -1000, y: -210}
-    RightTopPoint: {x: 0, y: 210}
+    LeftBottomPoint: {x: -1000, y: -200}
+    RightTopPoint: {x: 0, y: 200}
   ScanArea:
-    LeftBottomPoint: {x: -1100, y: -199}
-    RightTopPoint: {x: 110, y: 220}
+    LeftBottomPoint: {x: -1100, y: -200}
+    RightTopPoint: {x: 150, y: 220}
   RemoveArea:
     LeftBottomPoint: {x: -400, y: 0}
     RightTopPoint: {x: -200, y: 150}
