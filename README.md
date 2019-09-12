@@ -8,9 +8,26 @@ This is my diploma work
 - Work with tiles with different passability.
 - Bulk pathfinding. Many start positions, one finish.
 
-## How to use
+### Wiki
+* [Examples branch](https://github.com/dasik/PathFindingProject/tree/example) - look at other small projects
 
-First, copy the folder 'DasikPathfinding' in your asset scripts folder. Once you have it use pathfinding like this:
+### Installing with Unity Package Manager
+*(Requires Unity version 2018.3.0b7  or above)*
+
+To install this project as a [Git dependency](https://docs.unity3d.com/Manual/upm-git.html) using the Unity Package Manager,
+add the following line to your project's `manifest.json`:
+
+```
+"com.dasik.pathfinding": "https://github.com/Dasik/PathFindingProject.git"
+```
+
+You will need to have Git installed and available in your system's PATH.
+
+### Installing without Unity Package Manager
+
+Or you can just copy the folder 'Runtime' in your asset scripts folder. 
+
+## How to use
 
 ```C#
 //scan area
