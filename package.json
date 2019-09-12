@@ -1,0 +1,9 @@
+{
+    "name": "com.dasik.pathfinding",
+    "displayName": "Dasik pathfinding",
+    "version": "1",
+    "unity": "2018.1",
+    "description": "Multithread pathfinding project with non-linear grid",
+    "keywords": ["pathfinding", "grid"],
+    "category": "Pathfinding"
+}
