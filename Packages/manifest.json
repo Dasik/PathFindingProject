@@ -1,5 +1,6 @@
 {
   "dependencies": {
+    "com.dasik.pathfinding": "https://github.com/Dasik/PathFindingProject.git",
     "com.unity.2d.sprite": "1.0.0",
     "com.unity.2d.tilemap": "1.0.0",
     "com.unity.ads": "2.3.1",
@@ -47,5 +48,11 @@
     "com.unity.modules.vr": "1.0.0",
     "com.unity.modules.wind": "1.0.0",
     "com.unity.modules.xr": "1.0.0"
+  },
+  "lock": {
+    "com.dasik.pathfinding": {
+      "hash": "2b0e16daad434dced17c109241ec8549ef3eb395",
+      "revision": "HEAD"
+    }
   }
 }

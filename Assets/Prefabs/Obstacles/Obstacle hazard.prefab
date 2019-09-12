@@ -10,10 +10,10 @@ GameObject:
   m_Component:
   - component: {fileID: 4606839144164800}
   - component: {fileID: 212218423885504866}
-  - component: {fileID: 114013036310608166}
   - component: {fileID: 50892952722694944}
   - component: {fileID: 60978968686836420}
   - component: {fileID: 8726220342251304988}
+  - component: {fileID: 8297792821957167565}
   m_Layer: 0
   m_Name: Obstacle hazard
   m_TagString: Untagged
@@ -60,6 +60,7 @@ SpriteRenderer:
   m_ProbeAnchor: {fileID: 0}
   m_LightProbeVolumeOverride: {fileID: 0}
   m_ScaleInLightmap: 1
+  m_ReceiveGI: 1
   m_PreserveUVs: 0
   m_IgnoreNormalsForChartDetection: 0
   m_ImportantGI: 0
@@ -83,20 +84,6 @@ SpriteRenderer:
   m_WasSpriteAssigned: 1
   m_MaskInteraction: 0
   m_SpriteSortPoint: 0
---- !u!114 &114013036310608166
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 1743906997412344}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 7c96c0de06b6bf04f855ad6eb01a7c82, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: 
-  MinScale: 0.25
-  MaxScale: 15
 --- !u!50 &50892952722694944
 Rigidbody2D:
   serializedVersion: 4
@@ -196,3 +183,17 @@ MonoBehaviour:
   Ignored: 0
   Passability: 50
   ChangesUpdateTime: 9999
+--- !u!114 &8297792821957167565
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1743906997412344}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: bc92c0ec75138284bb649e0207816eea, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  MinScale: 0.25
+  MaxScale: 10

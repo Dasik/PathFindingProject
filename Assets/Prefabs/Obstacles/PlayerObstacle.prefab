@@ -13,6 +13,7 @@ GameObject:
   - component: {fileID: 61359489469354758}
   - component: {fileID: 50211810491384016}
   - component: {fileID: 5314780296487998625}
+  - component: {fileID: 1386808030858624155}
   m_Layer: 0
   m_Name: PlayerObstacle
   m_TagString: Untagged
@@ -59,6 +60,7 @@ SpriteRenderer:
   m_ProbeAnchor: {fileID: 0}
   m_LightProbeVolumeOverride: {fileID: 0}
   m_ScaleInLightmap: 1
+  m_ReceiveGI: 1
   m_PreserveUVs: 0
   m_IgnoreNormalsForChartDetection: 0
   m_ImportantGI: 0
@@ -144,3 +146,17 @@ MonoBehaviour:
   Ignored: 0
   Passability: 0
   ChangesUpdateTime: 999999
+--- !u!114 &1386808030858624155
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1033790032354560}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: bc92c0ec75138284bb649e0207816eea, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  MinScale: 0.25
+  MaxScale: 10
