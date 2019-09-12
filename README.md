@@ -9,7 +9,7 @@ This is my diploma work
 - Bulk pathfinding. Many start positions, one finish.
 
 ### Wiki
-* [Examples branch](https://github.com/dasik/PathFindingProject/tree/example) - look at other small projects
+* [Examples branch](https://github.com/dasik/PathFindingProject/tree/Example) - look at other small projects
 
 ### Installing with Unity Package Manager
 *(Requires Unity version 2018.3.0b7  or above)*
